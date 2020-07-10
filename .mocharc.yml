@@ -1,0 +1,4 @@
+recursive: true
+exit: true
+bail: true
+timeout: 5000
