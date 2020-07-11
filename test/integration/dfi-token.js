@@ -577,6 +577,18 @@ describe('DFI Token', () => {
         firstLog.event.should.be.equal('TransfersStarted');
     });
 
+    it('doesn\'t allow to start transfers when transferring is not stopped', async () => {
+        try {
+            await token.startTransfers({from: creator.address});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('DFIToken: transferring is not stopped');
+        }
+    });
+
     it('doesn\'t allow to burn zero address tokens', async () => {
         try {
             await token.burn(ZERO_ADDRESS, '1', {from: minter.address});

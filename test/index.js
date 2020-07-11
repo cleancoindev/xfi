@@ -20,4 +20,5 @@ global.Web3     = Web3;
 
 describe('Integration', () => {
     require('test/integration/dfi-token');
+    require('test/integration/exchange');
 });

@@ -2,7 +2,6 @@
 
 pragma solidity 0.6.11;
 
-import '@openzeppelin/contracts/GSN/Context.sol';
 import '@openzeppelin/contracts/math/SafeMath.sol';
 import '@openzeppelin/contracts/utils/Address.sol';
 import '@openzeppelin/contracts/access/AccessControl.sol';
@@ -24,7 +23,7 @@ import './interfaces/IDFIToken.sol';
  * functions have been added to mitigate the well-known issues around setting
  * allowances. See {IERC20-approve}.
  */
-contract DFIToken is Context, AccessControl, IDFIToken {
+contract DFIToken is AccessControl, IDFIToken {
     using SafeMath for uint256;
     using Address for address;
 
@@ -46,7 +45,7 @@ contract DFIToken is Context, AccessControl, IDFIToken {
      * Sets {DEFAULT_ADMIN_ROLE} (alias `owner`) role for caller.
      */
     constructor () public {
-        _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     /**
@@ -109,7 +108,7 @@ contract DFIToken is Context, AccessControl, IDFIToken {
      * - Contract isn't stopped.
      */
     function transfer(address recipient, uint256 amount) external override returns (bool) {
-        _transfer(_msgSender(), recipient, amount);
+        _transfer(msg.sender, recipient, amount);
 
         return true;
     }
@@ -123,7 +122,7 @@ contract DFIToken is Context, AccessControl, IDFIToken {
      * - `spender` cannot be the zero address.
      */
     function approve(address spender, uint256 amount) external override returns (bool) {
-        _approve(_msgSender(), spender, amount);
+        _approve(msg.sender, spender, amount);
 
         return true;
     }
@@ -143,7 +142,7 @@ contract DFIToken is Context, AccessControl, IDFIToken {
      */
     function transferFrom(address sender, address recipient, uint256 amount) external override returns (bool) {
         _transfer(sender, recipient, amount);
-        _approve(sender, _msgSender(), _allowances[sender][_msgSender()].sub(amount, 'DFIToken: transfer amount exceeds allowance'));
+        _approve(sender, msg.sender, _allowances[sender][msg.sender].sub(amount, 'DFIToken: transfer amount exceeds allowance'));
 
         return true;
     }
@@ -160,7 +159,7 @@ contract DFIToken is Context, AccessControl, IDFIToken {
      * - `spender` cannot be the zero address.
      */
     function increaseAllowance(address spender, uint256 addedValue) external override returns (bool) {
-        _approve(_msgSender(), spender, _allowances[_msgSender()][spender].add(addedValue));
+        _approve(msg.sender, spender, _allowances[msg.sender][spender].add(addedValue));
 
         return true;
     }
@@ -179,7 +178,7 @@ contract DFIToken is Context, AccessControl, IDFIToken {
      * `subtractedValue`.
      */
     function decreaseAllowance(address spender, uint256 subtractedValue) external override returns (bool) {
-        _approve(_msgSender(), spender, _allowances[_msgSender()][spender].sub(subtractedValue, 'DFIToken: decreased allowance below zero'));
+        _approve(msg.sender, spender, _allowances[msg.sender][spender].sub(subtractedValue, 'DFIToken: decreased allowance below zero'));
 
         return true;
     }
@@ -196,7 +195,7 @@ contract DFIToken is Context, AccessControl, IDFIToken {
      * - Contract isn't stopped.
      */
     function mint(address account, uint256 amount) external override returns (bool) {
-        require(hasRole(MINTER_ROLE, _msgSender()), 'DFIToken: sender is not minter');
+        require(hasRole(MINTER_ROLE, msg.sender), 'DFIToken: sender is not minter');
 
         _mint(account, amount);
 
@@ -216,7 +215,7 @@ contract DFIToken is Context, AccessControl, IDFIToken {
      * - Contract isn't stopped.
      */
     function burn(address account, uint256 amount) external override returns (bool) {
-        require(hasRole(MINTER_ROLE, _msgSender()), 'DFIToken: sender is not minter');
+        require(hasRole(MINTER_ROLE, msg.sender), 'DFIToken: sender is not minter');
 
         _burn(account, amount);
 
@@ -224,15 +223,17 @@ contract DFIToken is Context, AccessControl, IDFIToken {
     }
 
     /**
-     * Start all transfers.
+     * Starts all transfers.
+     *
+     * Emits a {TransfersStarted} event.
      *
      * Requirements:
-     * - Caller must have admin role.
+     * - Caller must have owner role.
      * - Contract is stopped.
      */
     function startTransfers() external override returns (bool) {
-        require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), 'DFIToken: sender is not owner');
-        require(_stopped);
+        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), 'DFIToken: sender is not owner');
+        require(_stopped, 'DFIToken: transferring is not stopped');
 
         _stopped = false;
 
@@ -242,14 +243,16 @@ contract DFIToken is Context, AccessControl, IDFIToken {
     }
 
     /**
-     * Stop all transfers.
+     * Stops all transfers.
+     *
+     * Emits a {TransfersStopped} event.
      *
      * Requirements:
-     * - Caller must have admin role.
+     * - Caller must have owner role.
      * - Contract isn't stopped.
      */
     function stopTransfers() external override returns (bool) {
-        require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), 'DFIToken: sender is not owner');
+        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), 'DFIToken: sender is not owner');
         require(!_stopped, 'DFIToken: transferring is stopped');
 
         _stopped = true;

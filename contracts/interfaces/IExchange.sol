@@ -3,67 +3,25 @@
 pragma solidity 0.6.11;
 
 interface IExchange {
-    /**
-     * Get estimation for swap of WINGS-DFI pair.
-     */
-    function estimateSwapWINGSForDFI(uint256 amountIn) external view returns (uint256);
+    event SwapWINGSForDFI(address indexed sender, uint256 amountIn, uint256 amountOut);
+    event SwapETHForDFI(address indexed sender, uint256 amountIn, uint256 amountOut);
+    event SwapDFIForWINGS(address indexed sender, uint256 amountIn, uint256 amountOut);
+    event SwapDFIForETH(address indexed sender, uint256 amountIn, uint256 amountOut);
+    event SwapsStarted();
+    event SwapsStopped();
+    event WINGSWithdrawal(address indexed to, uint256 amount);
 
-    /**
-     * Get estimation for swap of ETH-DFI pair.
-     */
-    function estimateSwapETHForDFI(uint256 amountOutMin) external view returns (uint256);
+    function estimateSwapWINGSForDFI(uint256 amountIn) external view returns (uint256[] memory amounts);
+    function estimateSwapETHForDFI(uint256 amountIn) external view returns (uint256[] memory amounts);
+    function estimateSwapDFIForWINGS(uint256 amountIn) external view returns (uint256[] memory amounts);
+    function estimateSwapDFIForETH(uint256 amountIn) external view returns (uint256[] memory amounts);
+    function isSwappingStopped() external view returns (bool);
 
-    /**
-     * Get estimation for swap of DFI-WINGS pair.
-     */
-    function estimateSwapDFIForWINGS(uint256 amountIn) external view returns (uint256);
-
-    /**
-     * Get estimation for swap of DFI-ETH pair.
-     */
-    function extimateSwapDFIForETH(uint256 amountIn, uint256 amountOutMin) external view returns (uint256);
-
-    /**
-     * Execute swap of WINGS-DFI pair.
-     */
-    function swapWINGSForDFI(uint256 amountIn) external returns (bool);
-
-    /**
-     * Execute swap of ETH-DFI pair.
-     */
-    function swapETHForDFI(uint256 amountOutMin) external payable returns (bool);
-
-    /**
-     * Execute swap of DFI-WINGS pair.
-     */
-    function swapDFIForWINGS(uint256 amountIn) external returns (bool);
-
-    /**
-     * Execute swap of DFI-ETH pair.
-     */
-    function swapDFIForETH(uint256 amountIn, uint256 amountOutMin) external returns (bool);
-
-    /**
-     * Stop all swaps.
-     * (access role: owner)
-     */
+    function swapWINGSForDFI(uint256 amountIn) external returns (uint256[] memory amounts);
+    function swapETHForDFI(uint256 amountOutMin) external payable returns (uint256[] memory amounts);
+    function swapDFIForWINGS(uint256 amountIn) external returns (uint256[] memory amounts);
+    function swapDFIForETH(uint256 amountIn, uint256 amountOutMin) external returns (uint256[] memory amounts);
     function stopSwaps() external returns (bool);
-
-    /**
-     * Withdraw locked WINGS.
-     * (access role: owner)
-     */
+    function startSwaps() external returns (bool);
     function withdrawWINGS(address to, uint256 amount) external returns (bool);
-
-    /**
-     * Add owner.
-     * (access role: owner)
-     */
-    function addOwner(address owner) external returns (bool);
-
-    /**
-     * Remove owner.
-     * (access role: owner)
-     */
-    function removeOwner(address owner) external returns (bool);
 }
