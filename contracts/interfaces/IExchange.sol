@@ -11,6 +11,9 @@ interface IExchange {
     event SwapsStopped();
     event WINGSWithdrawal(address indexed to, uint256 amount);
 
+    function wingsToken() external view returns (address);
+    function dfiToken() external view returns (address);
+    function uniswapRouter() external view returns (address);
     function estimateSwapWINGSForDFI(uint256 amountIn) external view returns (uint256[] memory amounts);
     function estimateSwapETHForDFI(uint256 amountIn) external view returns (uint256[] memory amounts);
     function estimateSwapDFIForWINGS(uint256 amountIn) external view returns (uint256[] memory amounts);

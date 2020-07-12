@@ -62,9 +62,10 @@ describe('DFI Token', () => {
     });
 
     before('deploy', async () => {
-        const TokenJson    = require('build/contracts/DFIToken.json');
-        const Token        = contract({abi: TokenJson.abi, unlinked_binary: TokenJson.bytecode});
         const web3Provider = new Web3.providers.HttpProvider(`http://localhost:${TEST_RPC_PORT}`);
+
+        const TokenJson = require('build/contracts/DFIToken.json');
+        const Token     = contract({abi: TokenJson.abi, unlinked_binary: TokenJson.bytecode});
         Token.setProvider(web3Provider);
 
         token = await Token.new({from: creator.address});
