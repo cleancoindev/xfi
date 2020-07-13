@@ -1,7 +1,7 @@
 /**
  * Simple wrapper ontop of Ganache Test RPC.
  *
- * @module test/helpers/test-rpc
+ * @module test/lib/test-rpc
  */
 
 'use strict';

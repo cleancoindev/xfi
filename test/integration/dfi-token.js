@@ -1,4 +1,4 @@
-/* global Web3 contract */
+/* global Web3 contract helpers TestRpc */
 
 /**
  * Integration test which covers functionality of DFI Token.
@@ -8,14 +8,12 @@
 
 'use strict';
 
-const TestRpc = require('test/helpers/test-rpc');
-
 const TEST_RPC_PORT = +process.env.TEST_RPC_PORT || 9545;
-const ZERO_ADDRESS  = '0x' + '0'.repeat(40);
 
 const web3 = new Web3(`http://localhost:${TEST_RPC_PORT}`);
 
-const {toWei} = web3.utils;
+const {toStr, toWei} = helpers;
+const {ZERO_ADDRESS} = helpers;
 
 describe('DFI Token', () => {
     let token;
@@ -30,34 +28,34 @@ describe('DFI Token', () => {
     const testRpc = TestRpc({
         accounts: [
             {
-                balance: '1000000000000000000000000', // 1 million ETH
+                balance: toWei('1000000'),
                 secretKey: creator.privateKey
             },
             {
-                balance: '10000000000000000000', // 10 ETH
+                balance: toWei('10'),
                 secretKey: newOwner.privateKey
             },
             {
-                balance: '10000000000000000000', // 10 ETH
+                balance: toWei('10'),
                 secretKey: tempOwner.privateKey
             },
             {
-                balance: '10000000000000000000', // 10 ETH
+                balance: toWei('10'),
                 secretKey: minter.privateKey
             },
             {
-                balance: '10000000000000000000', // 10 ETH
+                balance: toWei('10'),
                 secretKey: firstUser.privateKey
             },
             {
-                balance: '10000000000000000000', // 10 ETH
+                balance: toWei('10'),
                 secretKey: secondUser.privateKey
             }
         ],
         locked: false
     });
 
-    before('launch test RPC', async () => {
+    before('launch the Test RPC', async () => {
         await testRpc.start(TEST_RPC_PORT);
     });
 
@@ -242,18 +240,18 @@ describe('DFI Token', () => {
     });
 
     it('minter mints tokens for first user', async () => {
-        const firstUserBalanceBefore = (await token.balanceOf.call(firstUser.address)).toString(10);
-        const totalSupplyBefore      = (await token.totalSupply.call()).toString(10);
+        const firstUserBalanceBefore = toStr(await token.balanceOf.call(firstUser.address));
+        const totalSupplyBefore      = toStr(await token.totalSupply.call());
 
         firstUserBalanceBefore.should.be.equal('0');
         totalSupplyBefore.should.be.equal('0');
 
-        const amountToMint = toWei('10', 'ether').toString(10);
+        const amountToMint = toWei('10');
 
         const txResult = await token.mint(firstUser.address, amountToMint, {from: minter.address});
 
-        const firstUserBalanceAfter = (await token.balanceOf.call(firstUser.address)).toString(10);
-        const totalSupplyAfter      = (await token.totalSupply.call()).toString(10);
+        const firstUserBalanceAfter = toStr(await token.balanceOf.call(firstUser.address));
+        const totalSupplyAfter      = toStr(await token.totalSupply.call());
 
         firstUserBalanceAfter.should.be.equal(amountToMint);
         totalSupplyAfter.should.be.equal(amountToMint);
@@ -267,7 +265,7 @@ describe('DFI Token', () => {
         firstLog.event.should.be.equal('Transfer');
         firstLog.args.from.should.be.equal(ZERO_ADDRESS);
         firstLog.args.to.should.be.equal(firstUser.address);
-        firstLog.args.value.toString(10).should.be.equal(amountToMint);
+        toStr(firstLog.args.value).should.be.equal(amountToMint);
     });
 
     it('doesn\'t allow to transfer tokens to zero address', async () => {
@@ -283,17 +281,17 @@ describe('DFI Token', () => {
     });
 
     it('first user can transfer tokens to second user', async () => {
-        const amountToTransfer = toWei('5', 'ether').toString(10);
+        const amountToTransfer = toWei('5');
 
         const txResult = await token.transfer(secondUser.address, amountToTransfer, {from: firstUser.address});
 
-        const expectedFirstUserBalance  = toWei('5', 'ether').toString(10);
-        const expectedSecondUserBalance = toWei('5', 'ether').toString(10);
-        const expectedTotalSupply       = toWei('10', 'ether').toString(10);
+        const expectedFirstUserBalance  = toWei('5');
+        const expectedSecondUserBalance = toWei('5');
+        const expectedTotalSupply       = toWei('10');
 
-        const firstUserBalanceAfter  = (await token.balanceOf.call(firstUser.address)).toString(10);
-        const secondUserBalanceAfter = (await token.balanceOf.call(secondUser.address)).toString(10);
-        const totalSupplyAfter       = (await token.totalSupply.call()).toString(10);
+        const firstUserBalanceAfter  = toStr(await token.balanceOf.call(firstUser.address));
+        const secondUserBalanceAfter = toStr(await token.balanceOf.call(secondUser.address));
+        const totalSupplyAfter       = toStr(await token.totalSupply.call());
 
         firstUserBalanceAfter.should.be.equal(expectedFirstUserBalance);
         secondUserBalanceAfter.should.be.equal(expectedSecondUserBalance);
@@ -308,7 +306,7 @@ describe('DFI Token', () => {
         firstLog.event.should.be.equal('Transfer');
         firstLog.args.from.should.be.equal(firstUser.address);
         firstLog.args.to.should.be.equal(secondUser.address);
-        firstLog.args.value.toString(10).should.be.equal(amountToTransfer);
+        toStr(firstLog.args.value).should.be.equal(amountToTransfer);
     });
 
     it('doesn\'t allow to approve spending of tokens to a zero address', async () => {
@@ -324,13 +322,13 @@ describe('DFI Token', () => {
     });
 
     it('first user approves second user to use his tokens', async () => {
-        const amountToApprove = toWei('5', 'ether').toString(10);
+        const amountToApprove = toWei('5');
 
         const txResult = await token.approve(secondUser.address, amountToApprove, {from: firstUser.address});
 
-        const expectedSecondUserAllowance = toWei('5', 'ether').toString(10);
+        const expectedSecondUserAllowance = toWei('5');
 
-        const secondUserAllowance = (await token.allowance.call(firstUser.address, secondUser.address)).toString(10);
+        const secondUserAllowance = toStr(await token.allowance.call(firstUser.address, secondUser.address));
 
         secondUserAllowance.should.be.equal(expectedSecondUserAllowance);
 
@@ -343,7 +341,7 @@ describe('DFI Token', () => {
         firstLog.event.should.be.equal('Approval');
         firstLog.args.owner.should.be.equal(firstUser.address);
         firstLog.args.spender.should.be.equal(secondUser.address);
-        firstLog.args.value.toString(10).should.be.equal(amountToApprove);
+        toStr(firstLog.args.value).should.be.equal(amountToApprove);
     });
 
     it('doesn\'t allow to decrease allowance of zero address', async () => {
@@ -359,13 +357,13 @@ describe('DFI Token', () => {
     });
 
     it('first user can descrease allowance', async () => {
-        const delta = toWei('1', 'ether').toString(10);
+        const delta = toWei('1');
 
         await token.decreaseAllowance(secondUser.address, delta, {from: firstUser.address});
 
-        const expectedSecondUserAllowance = toWei('4', 'ether').toString(10);
+        const expectedSecondUserAllowance = toWei('4');
 
-        const secondUserAllowance = (await token.allowance.call(firstUser.address, secondUser.address)).toString(10);
+        const secondUserAllowance = toStr(await token.allowance.call(firstUser.address, secondUser.address));
 
         secondUserAllowance.should.be.equal(expectedSecondUserAllowance);
     });
@@ -383,13 +381,13 @@ describe('DFI Token', () => {
     });
 
     it('first user can increase allowance', async () => {
-        const delta = toWei('1', 'ether').toString(10);
+        const delta = toWei('1');
 
         await token.increaseAllowance(secondUser.address, delta, {from: firstUser.address});
 
-        const expectedSecondUserAllowance = toWei('5', 'ether').toString(10);
+        const expectedSecondUserAllowance = toWei('5');
 
-        const secondUserAllowance = (await token.allowance.call(firstUser.address, secondUser.address)).toString(10);
+        const secondUserAllowance = toStr(await token.allowance.call(firstUser.address, secondUser.address));
 
         secondUserAllowance.should.be.equal(expectedSecondUserAllowance);
     });
@@ -419,17 +417,17 @@ describe('DFI Token', () => {
     });
 
     it('second user transfers tokens from first user', async () => {
-        const amountToTransfer = toWei('5', 'ether').toString(10);
+        const amountToTransfer = toWei('5');
 
         const txResult = await token.transferFrom(firstUser.address, secondUser.address, amountToTransfer, {from: secondUser.address});
 
         const expectedFirstUserBalance  = '0';
-        const expectedSecondUserBalance = toWei('10', 'ether').toString(10);
-        const expectedTotalSupply       = toWei('10', 'ether').toString(10);
+        const expectedSecondUserBalance = toWei('10');
+        const expectedTotalSupply       = toWei('10');
 
-        const firstUserBalanceAfter  = (await token.balanceOf.call(firstUser.address)).toString(10);
-        const secondUserBalanceAfter = (await token.balanceOf.call(secondUser.address)).toString(10);
-        const totalSupplyAfter       = (await token.totalSupply.call()).toString(10);
+        const firstUserBalanceAfter  = toStr(await token.balanceOf.call(firstUser.address));
+        const secondUserBalanceAfter = toStr(await token.balanceOf.call(secondUser.address));
+        const totalSupplyAfter       = toStr(await token.totalSupply.call());
 
         firstUserBalanceAfter.should.be.equal(expectedFirstUserBalance);
         secondUserBalanceAfter.should.be.equal(expectedSecondUserBalance);
@@ -444,14 +442,14 @@ describe('DFI Token', () => {
         firstLog.event.should.be.equal('Transfer');
         firstLog.args.from.should.be.equal(firstUser.address);
         firstLog.args.to.should.be.equal(secondUser.address);
-        firstLog.args.value.toString(10).should.be.equal(amountToTransfer);
+        toStr(firstLog.args.value).should.be.equal(amountToTransfer);
 
         const secondLog = txResult.logs[1];
 
         secondLog.event.should.be.equal('Approval');
         secondLog.args.owner.should.be.equal(firstUser.address);
         secondLog.args.spender.should.be.equal(secondUser.address);
-        secondLog.args.value.toString(10).should.be.equal('0');
+        toStr(secondLog.args.value).should.be.equal('0');
     });
 
     it('ex-owner can\'t stop transfers', async () => {
@@ -603,15 +601,15 @@ describe('DFI Token', () => {
     });
 
     it('minter burns user tokens', async () => {
-        const amountToBurn = toWei('10', 'ether');
+        const amountToBurn = toWei('10');
 
         const txResult = await token.burn(secondUser.address, amountToBurn, {from: minter.address});
 
         const expectedSecondUserBalance = '0';
         const expectedTotalSupply       = '0';
 
-        const secondUserBalanceAfter = (await token.balanceOf.call(secondUser.address)).toString(10);
-        const totalSupplyAfter       = (await token.totalSupply.call()).toString(10);
+        const secondUserBalanceAfter = toStr(await token.balanceOf.call(secondUser.address));
+        const totalSupplyAfter       = toStr(await token.totalSupply.call());
 
         secondUserBalanceAfter.should.be.equal(expectedSecondUserBalance);
         totalSupplyAfter.should.be.equal(expectedTotalSupply);
@@ -625,7 +623,7 @@ describe('DFI Token', () => {
         firstLog.event.should.be.equal('Transfer');
         firstLog.args.from.should.be.equal(secondUser.address);
         firstLog.args.to.should.be.equal(ZERO_ADDRESS);
-        firstLog.args.value.toString(10).should.be.equal(amountToBurn);
+        toStr(firstLog.args.value).should.be.equal(amountToBurn);
     });
 
     it('remove (last) minter', async () => {
@@ -703,7 +701,7 @@ describe('DFI Token', () => {
         firstLog.args.sender.should.be.equal(creator.address);
     });
 
-    after('stop test RPC', () => {
+    after('stop the Test RPC', () => {
         testRpc.stop();
     });
 });

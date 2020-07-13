@@ -1,4 +1,4 @@
-/* global Web3 contract */
+/* global Web3 contract helpers TestRpc */
 
 /**
  * Integration test which covers functionality of Ethereum DFI Exchange.
@@ -8,15 +8,14 @@
 
 'use strict';
 
-const bigInt  = require('big-integer');
-const TestRpc = require('test/helpers/test-rpc');
+const bigInt = require('big-integer');
 
 const TEST_RPC_PORT = +process.env.TEST_RPC_PORT || 9545;
-const ZERO_ADDRESS  = '0x' + '0'.repeat(40);
 
 const web3 = new Web3(`http://localhost:${TEST_RPC_PORT}`);
 
-const {toWei} = web3.utils;
+const {toStr, toWei} = helpers;
+const {ZERO_ADDRESS} = helpers;
 
 describe('Ethereum DFI Exchange', () => {
     let wingsToken;
@@ -33,38 +32,38 @@ describe('Ethereum DFI Exchange', () => {
     const testRpc = TestRpc({
         accounts: [
             {
-                balance: '1000000000000000000000000', // 1 million ETH
+                balance: toWei('1000000'),
                 secretKey: creator.privateKey
             },
             {
-                balance: '10000000000000000000', // 10 ETH
+                balance: toWei('10'),
                 secretKey: newOwner.privateKey
             },
             {
-                balance: '10000000000000000000', // 10 ETH
+                balance: toWei('10'),
                 secretKey: tempOwner.privateKey
             },
             {
-                balance: '10000000000000000000', // 10 ETH
+                balance: toWei('10'),
                 secretKey: user.privateKey
             },
             {
-                balance: '10000000000000000000', // 10 ETH
+                balance: toWei('10'),
                 secretKey: maliciousUser.privateKey
             }
         ],
         locked: false
     });
 
-    const WINGS_TOTAL_SUPPLY = toWei('100000000', 'ether').toString(10); // 1e26
+    const WINGS_TOTAL_SUPPLY = toWei('100000000'); // 1e26
     const WINGS_PER_ETH      = 100;
     const DFI_PER_ETH        = 100;
 
-    const USER_WINGS                   = toWei('100', 'ether').toString(10);
-    const UNISWAP_LIQUIDITY_POOL_WINGS = toWei('100', 'ether').toString(10);
-    const UNISWAP_LIQUIDITY_POOL_ETH   = toWei('100', 'ether').toString(10);
+    const USER_WINGS                   = toWei('100');
+    const UNISWAP_LIQUIDITY_POOL_WINGS = toWei('100');
+    const UNISWAP_LIQUIDITY_POOL_ETH   = toWei('100');
 
-    before('launch test RPC', async () => {
+    before('launch the Test RPC', async () => {
         await testRpc.start(TEST_RPC_PORT);
     });
 
@@ -101,13 +100,13 @@ describe('Ethereum DFI Exchange', () => {
     });
 
     it('total supply of WINGS is valid', async () => {
-        const wingsTotalSupply = (await wingsToken.totalSupply.call()).toString(10);
+        const wingsTotalSupply = toStr(await wingsToken.totalSupply.call());
 
         wingsTotalSupply.should.be.equal(WINGS_TOTAL_SUPPLY);
     });
 
     it('total supply of DFI is zero', async () => {
-        const dfiTotalSupply = (await dfiToken.totalSupply.call()).toString(10);
+        const dfiTotalSupply = toStr(await dfiToken.totalSupply.call());
 
         dfiTotalSupply.should.be.equal('0');
     });
@@ -257,7 +256,7 @@ describe('Ethereum DFI Exchange', () => {
 
         await wingsToken.transfer(user.address, amountToTransfer, {from: creator.address});
 
-        const userBalance = (await wingsToken.balanceOf.call(user.address)).toString(10);
+        const userBalance = toStr(await wingsToken.balanceOf.call(user.address));
 
         userBalance.should.be.equal(amountToTransfer);
     });
@@ -274,7 +273,7 @@ describe('Ethereum DFI Exchange', () => {
             value: ethAmountToTransfer
         });
 
-        const uniswapRouterWingsBalance = (await wingsToken.balanceOf.call(uniswapRouter.address)).toString(10);
+        const uniswapRouterWingsBalance = toStr(await wingsToken.balanceOf.call(uniswapRouter.address));
         const uniswapRouterEthBalance   = await web3.eth.getBalance(uniswapRouter.address);
 
         uniswapRouterWingsBalance.should.be.equal(wingsAmountToTransfer);
@@ -282,60 +281,60 @@ describe('Ethereum DFI Exchange', () => {
     });
 
     it('estimate amounts of swap WINGS-DFI', async () => {
-        const amountIn = toWei('100', 'ether').toString(10);
+        const amountIn = toWei('100');
 
         const amounts = await exchange.estimateSwapWINGSForDFI.call(amountIn);
 
         const expectedWingsIn = amountIn;
         const expectedDfiOut  = amountIn;
 
-        const wingsIn = amounts[0].toString(10);
-        const dfiOut  = amounts[1].toString(10);
+        const wingsIn = toStr(amounts[0]);
+        const dfiOut  = toStr(amounts[1]);
 
         wingsIn.should.be.equal(expectedWingsIn);
         dfiOut.should.be.equal(expectedDfiOut);
     });
 
     it('estimate amounts of swap ETH-DFI', async () => {
-        const amountIn = toWei('1', 'ether').toString(10);
+        const amountIn = toWei('1');
 
         const amounts = await exchange.estimateSwapETHForDFI.call(amountIn);
 
         const expectedEthIn  = amountIn;
-        const expectedDfiOut = (amountIn * WINGS_PER_ETH).toString(10);
+        const expectedDfiOut = toStr(amountIn * WINGS_PER_ETH);
 
-        const ethIn  = amounts[0].toString(10);
-        const dfiOut = amounts[1].toString(10);
+        const ethIn  = toStr(amounts[0]);
+        const dfiOut = toStr(amounts[1]);
 
         ethIn.should.be.equal(expectedEthIn);
         dfiOut.should.be.equal(expectedDfiOut);
     });
 
     it('estimate amounts of swap DFI-WINGS', async () => {
-        const amountIn = toWei('100', 'ether').toString(10);
+        const amountIn = toWei('100');
 
         const amounts = await exchange.estimateSwapDFIForWINGS.call(amountIn);
 
         const expectedDfiIn    = amountIn;
         const expectedWingsOut = amountIn;
 
-        const dfiIn    = amounts[0].toString(10);
-        const wingsOut = amounts[1].toString(10);
+        const dfiIn    = toStr(amounts[0]);
+        const wingsOut = toStr(amounts[1]);
 
         dfiIn.should.be.equal(expectedDfiIn);
         wingsOut.should.be.equal(expectedWingsOut);
     });
 
     it('estimate amounts of swap DFI-ETH', async () => {
-        const amountIn = toWei('100', 'ether').toString(10);
+        const amountIn = toWei('100');
 
         const amounts = await exchange.estimateSwapDFIForETH.call(amountIn);
 
         const expectedDfiIn  = amountIn;
-        const expectedEthOut = (amountIn / WINGS_PER_ETH).toString(10);
+        const expectedEthOut = toStr(amountIn / WINGS_PER_ETH);
 
-        const dfiIn  = amounts[0].toString(10);
-        const ethOut = amounts[1].toString(10);
+        const dfiIn  = toStr(amounts[0]);
+        const ethOut = toStr(amounts[1]);
 
         dfiIn.should.be.equal(expectedDfiIn);
         ethOut.should.be.equal(expectedEthOut);
@@ -343,31 +342,31 @@ describe('Ethereum DFI Exchange', () => {
 
     it('swap WINGS-DFI', async () => {
         // Amount of WINGS to swap.
-        const amountIn = toWei('100', 'ether').toString(10);
+        const amountIn = toWei('100');
 
         // Expected values before the swap.
         const expectedDfiTotalSupplyBefore       = '0';
-        const expectedUserWingsBalanceBefore     = toWei('100', 'ether').toString(10);
+        const expectedUserWingsBalanceBefore     = toWei('100');
         const expectedUserDfiBalanceBefore       = '0';
         const expectedExchangeWingsBalanceBefore = '0';
 
         // Expected values after the swap.
-        const expectedDfiTotalSupplyAfter        = toWei('100', 'ether').toString(10);
+        const expectedDfiTotalSupplyAfter        = toWei('100');
         const expectedUserWingsBalanceAfter      = '0';
-        const expectedUserDfiBalanceAfter        = toWei('100', 'ether').toString(10);
-        const expectedExchangeWingsBalanceAfter  = toWei('100', 'ether').toString(10);
+        const expectedUserDfiBalanceAfter        = toWei('100');
+        const expectedExchangeWingsBalanceAfter  = toWei('100');
 
         // Balances check before the swap.
-        const userWingsBalanceBefore     = (await wingsToken.balanceOf.call(user.address)).toString(10);
-        const userDfiBalanceBefore       = (await dfiToken.balanceOf.call(user.address)).toString(10);
-        const exchangeWingsBalanceBefore = (await wingsToken.balanceOf.call(exchange.address)).toString(10);
+        const userWingsBalanceBefore     = toStr(await wingsToken.balanceOf.call(user.address));
+        const userDfiBalanceBefore       = toStr(await dfiToken.balanceOf.call(user.address));
+        const exchangeWingsBalanceBefore = toStr(await wingsToken.balanceOf.call(exchange.address));
 
         userWingsBalanceBefore.should.be.equal(expectedUserWingsBalanceBefore);
         userDfiBalanceBefore.should.be.equal(expectedUserDfiBalanceBefore);
         exchangeWingsBalanceBefore.should.be.equal(expectedExchangeWingsBalanceBefore);
 
         // DFI total supply check before the swap.
-        const dfiTotalSupplyBefore = (await dfiToken.totalSupply.call()).toString(10);
+        const dfiTotalSupplyBefore = toStr(await dfiToken.totalSupply.call());
 
         dfiTotalSupplyBefore.should.be.equal(expectedDfiTotalSupplyBefore);
 
@@ -378,14 +377,14 @@ describe('Ethereum DFI Exchange', () => {
         await exchange.swapWINGSForDFI(amountIn, {from: user.address});
 
         // DFI total supply check after the swap.
-        const dfiTotalSupplyAfter = (await dfiToken.totalSupply.call()).toString(10);
+        const dfiTotalSupplyAfter = toStr(await dfiToken.totalSupply.call());
 
         dfiTotalSupplyAfter.should.be.equal(expectedDfiTotalSupplyAfter);
 
         // Balances check after the swap.
-        const userWingsBalanceAfter     = (await wingsToken.balanceOf.call(user.address)).toString(10);
-        const userDfiBalanceAfter       = (await dfiToken.balanceOf.call(user.address)).toString(10);
-        const exchangeWingsBalanceAfter = (await wingsToken.balanceOf.call(exchange.address)).toString(10);
+        const userWingsBalanceAfter     = toStr(await wingsToken.balanceOf.call(user.address));
+        const userDfiBalanceAfter       = toStr(await dfiToken.balanceOf.call(user.address));
+        const exchangeWingsBalanceAfter = toStr(await wingsToken.balanceOf.call(exchange.address));
 
         userWingsBalanceAfter.should.be.equal(expectedUserWingsBalanceAfter);
         userDfiBalanceAfter.should.be.equal(expectedUserDfiBalanceAfter);
@@ -394,34 +393,34 @@ describe('Ethereum DFI Exchange', () => {
 
     it('swap ETH-DFI', async () => {
         // Amount of ETH to swap.
-        const amountIn = toWei('1', 'ether').toString(10);
+        const amountIn = toWei('1');
 
         // Minimum amount of DFI tokens to receive.
-        const amountOutMin = (amountIn * DFI_PER_ETH).toString(10);
+        const amountOutMin = toStr(amountIn * DFI_PER_ETH);
 
         // Expected values before the swap.
-        const expectedDfiTotalSupplyBefore       = toWei('100', 'ether').toString(10);
+        const expectedDfiTotalSupplyBefore       = toWei('100');
         const expectedUserWingsBalanceBefore     = '0';
-        const expectedUserDfiBalanceBefore       = toWei('100', 'ether').toString(10);
-        const expectedExchangeWingsBalanceBefore = toWei('100', 'ether').toString(10);
+        const expectedUserDfiBalanceBefore       = toWei('100');
+        const expectedExchangeWingsBalanceBefore = toWei('100');
 
         // Expected values after the swap.
-        const expectedDfiTotalSupplyAfter        = toWei('200', 'ether').toString(10);
+        const expectedDfiTotalSupplyAfter        = toWei('200');
         const expectedUserWingsBalanceAfter      = '0';
-        const expectedUserDfiBalanceAfter        = toWei('200', 'ether').toString(10);
-        const expectedExchangeWingsBalanceAfter  = toWei('200', 'ether').toString(10);
+        const expectedUserDfiBalanceAfter        = toWei('200');
+        const expectedExchangeWingsBalanceAfter  = toWei('200');
 
         // Balances check before the swap.
-        const userWingsBalanceBefore     = (await wingsToken.balanceOf.call(user.address)).toString(10);
-        const userDfiBalanceBefore       = (await dfiToken.balanceOf.call(user.address)).toString(10);
-        const exchangeWingsBalanceBefore = (await wingsToken.balanceOf.call(exchange.address)).toString(10);
+        const userWingsBalanceBefore     = toStr(await wingsToken.balanceOf.call(user.address));
+        const userDfiBalanceBefore       = toStr(await dfiToken.balanceOf.call(user.address));
+        const exchangeWingsBalanceBefore = toStr(await wingsToken.balanceOf.call(exchange.address));
 
         userWingsBalanceBefore.should.be.equal(expectedUserWingsBalanceBefore);
         userDfiBalanceBefore.should.be.equal(expectedUserDfiBalanceBefore);
         exchangeWingsBalanceBefore.should.be.equal(expectedExchangeWingsBalanceBefore);
 
         // DFI total supply check before the swap.
-        const dfiTotalSupplyBefore = (await dfiToken.totalSupply.call()).toString(10);
+        const dfiTotalSupplyBefore = toStr(await dfiToken.totalSupply.call());
 
         dfiTotalSupplyBefore.should.be.equal(expectedDfiTotalSupplyBefore);
 
@@ -429,14 +428,14 @@ describe('Ethereum DFI Exchange', () => {
         await exchange.swapETHForDFI(amountOutMin, {from: user.address, value: amountIn});
 
         // DFI total supply check after the swap.
-        const dfiTotalSupplyAfter = (await dfiToken.totalSupply.call()).toString(10);
+        const dfiTotalSupplyAfter = toStr(await dfiToken.totalSupply.call());
 
         dfiTotalSupplyAfter.should.be.equal(expectedDfiTotalSupplyAfter);
 
         // Balances check after the swap.
-        const userWingsBalanceAfter     = (await wingsToken.balanceOf.call(user.address)).toString(10);
-        const userDfiBalanceAfter       = (await dfiToken.balanceOf.call(user.address)).toString(10);
-        const exchangeWingsBalanceAfter = (await wingsToken.balanceOf.call(exchange.address)).toString(10);
+        const userWingsBalanceAfter     = toStr(await wingsToken.balanceOf.call(user.address));
+        const userDfiBalanceAfter       = toStr(await dfiToken.balanceOf.call(user.address));
+        const exchangeWingsBalanceAfter = toStr(await wingsToken.balanceOf.call(exchange.address));
 
         userWingsBalanceAfter.should.be.equal(expectedUserWingsBalanceAfter);
         userDfiBalanceAfter.should.be.equal(expectedUserDfiBalanceAfter);
@@ -581,29 +580,29 @@ describe('Ethereum DFI Exchange', () => {
 
     it('swap DFI-WINGS', async () => {
         // Amount of DFI to swap.
-        const amountIn = toWei('100', 'ether').toString(10);
+        const amountIn = toWei('100');
 
         // Expected values before the swap.
-        const expectedDfiTotalSupplyBefore       = toWei('200', 'ether').toString(10);
+        const expectedDfiTotalSupplyBefore       = toWei('200');
         const expectedUserWingsBalanceBefore     = '0';
-        const expectedUserDfiBalanceBefore       = toWei('200', 'ether').toString(10);
-        const expectedExchangeWingsBalanceBefore = toWei('200', 'ether').toString(10);
+        const expectedUserDfiBalanceBefore       = toWei('200');
+        const expectedExchangeWingsBalanceBefore = toWei('200');
 
         // Expected values after the swap.
-        const expectedDfiTotalSupplyAfter        = toWei('100', 'ether').toString(10);
-        const expectedUserWingsBalanceAfter      = toWei('100', 'ether').toString(10);
-        const expectedUserDfiBalanceAfter        = toWei('100', 'ether').toString(10);
-        const expectedExchangeWingsBalanceAfter  = toWei('100', 'ether').toString(10);
+        const expectedDfiTotalSupplyAfter        = toWei('100');
+        const expectedUserWingsBalanceAfter      = toWei('100');
+        const expectedUserDfiBalanceAfter        = toWei('100');
+        const expectedExchangeWingsBalanceAfter  = toWei('100');
 
         // DFI total supply check before the swap.
-        const dfiTotalSupplyBefore = (await dfiToken.totalSupply.call()).toString(10);
+        const dfiTotalSupplyBefore = toStr(await dfiToken.totalSupply.call());
 
         dfiTotalSupplyBefore.should.be.equal(expectedDfiTotalSupplyBefore);
 
         // Balances check before the swap.
-        const userWingsBalanceBefore     = (await wingsToken.balanceOf.call(user.address)).toString(10);
-        const userDfiBalanceBefore       = (await dfiToken.balanceOf.call(user.address)).toString(10);
-        const exchangeWingsBalanceBefore = (await wingsToken.balanceOf.call(exchange.address)).toString(10);
+        const userWingsBalanceBefore     = toStr(await wingsToken.balanceOf.call(user.address));
+        const userDfiBalanceBefore       = toStr(await dfiToken.balanceOf.call(user.address));
+        const exchangeWingsBalanceBefore = toStr(await wingsToken.balanceOf.call(exchange.address));
 
         userWingsBalanceBefore.should.be.equal(expectedUserWingsBalanceBefore);
         userDfiBalanceBefore.should.be.equal(expectedUserDfiBalanceBefore);
@@ -616,14 +615,14 @@ describe('Ethereum DFI Exchange', () => {
         await exchange.swapDFIForWINGS(amountIn, {from: user.address});
 
         // DFI total supply check after the swap.
-        const dfiTotalSupplyAfter = (await dfiToken.totalSupply.call()).toString(10);
+        const dfiTotalSupplyAfter = toStr(await dfiToken.totalSupply.call());
 
         dfiTotalSupplyAfter.should.be.equal(expectedDfiTotalSupplyAfter);
 
         // Balances check after the swap.
-        const userWingsBalanceAfter     = (await wingsToken.balanceOf.call(user.address)).toString(10);
-        const userDfiBalanceAfter       = (await dfiToken.balanceOf.call(user.address)).toString(10);
-        const exchangeWingsBalanceAfter = (await wingsToken.balanceOf.call(exchange.address)).toString(10);
+        const userWingsBalanceAfter     = toStr(await wingsToken.balanceOf.call(user.address));
+        const userDfiBalanceAfter       = toStr(await dfiToken.balanceOf.call(user.address));
+        const exchangeWingsBalanceAfter = toStr(await wingsToken.balanceOf.call(exchange.address));
 
         userWingsBalanceAfter.should.be.equal(expectedUserWingsBalanceAfter);
         userDfiBalanceAfter.should.be.equal(expectedUserDfiBalanceAfter);
@@ -632,32 +631,36 @@ describe('Ethereum DFI Exchange', () => {
 
     it('swap DFI-ETH', async () => {
         // Amount of ETH to swap.
-        const amountIn = bigInt(100).multiply(1e18).toString(10);
+        const amountIn = bigInt(100)
+            .multiply(1e18)
+            .toString(10);
 
         // Minimum amount of DFI tokens to receive.
-        const amountOutMin = bigInt(100 * DFI_PER_ETH).multiply(1e18).toString(10);
+        const amountOutMin = bigInt(100 * DFI_PER_ETH)
+            .multiply(1e18)
+            .toString(10);
 
         // Expected values before the swap.
-        const expectedDfiTotalSupplyBefore       = toWei('100', 'ether').toString(10);
-        const expectedUserWingsBalanceBefore     = toWei('100', 'ether').toString(10);
-        const expectedUserDfiBalanceBefore       = toWei('100', 'ether').toString(10);
-        const expectedExchangeWingsBalanceBefore = toWei('100', 'ether').toString(10);
+        const expectedDfiTotalSupplyBefore       = toWei('100');
+        const expectedUserWingsBalanceBefore     = toWei('100');
+        const expectedUserDfiBalanceBefore       = toWei('100');
+        const expectedExchangeWingsBalanceBefore = toWei('100');
 
         // Expected values after the swap.
         const expectedDfiTotalSupplyAfter        = '0';
-        const expectedUserWingsBalanceAfter      = toWei('100', 'ether').toString(10);
+        const expectedUserWingsBalanceAfter      = toWei('100');
         const expectedUserDfiBalanceAfter        = '0';
         const expectedExchangeWingsBalanceAfter  = '0';
 
         // DFI total supply check before the swap.
-        const dfiTotalSupplyBefore = (await dfiToken.totalSupply.call()).toString(10);
+        const dfiTotalSupplyBefore = toStr(await dfiToken.totalSupply.call());
 
         dfiTotalSupplyBefore.should.be.equal(expectedDfiTotalSupplyBefore);
 
         // Balances check before the swap.
-        const userWingsBalanceBefore     = (await wingsToken.balanceOf.call(user.address)).toString(10);
-        const userDfiBalanceBefore       = (await dfiToken.balanceOf.call(user.address)).toString(10);
-        const exchangeWingsBalanceBefore = (await wingsToken.balanceOf.call(exchange.address)).toString(10);
+        const userWingsBalanceBefore     = toStr(await wingsToken.balanceOf.call(user.address));
+        const userDfiBalanceBefore       = toStr(await dfiToken.balanceOf.call(user.address));
+        const exchangeWingsBalanceBefore = toStr(await wingsToken.balanceOf.call(exchange.address));
 
         userWingsBalanceBefore.should.be.equal(expectedUserWingsBalanceBefore);
         userDfiBalanceBefore.should.be.equal(expectedUserDfiBalanceBefore);
@@ -670,14 +673,14 @@ describe('Ethereum DFI Exchange', () => {
         await exchange.swapDFIForETH(amountIn, amountOutMin, {from: user.address});
 
         // DFI total supply check after the swap.
-        const dfiTotalSupplyAfter = (await dfiToken.totalSupply.call()).toString(10);
+        const dfiTotalSupplyAfter = toStr(await dfiToken.totalSupply.call());
 
         dfiTotalSupplyAfter.should.be.equal(expectedDfiTotalSupplyAfter);
 
         // Balances check after the swap.
-        const userWingsBalanceAfter     = (await wingsToken.balanceOf.call(user.address)).toString(10);
-        const userDfiBalanceAfter       = (await dfiToken.balanceOf.call(user.address)).toString(10);
-        const exchangeWingsBalanceAfter = (await wingsToken.balanceOf.call(exchange.address)).toString(10);
+        const userWingsBalanceAfter     = toStr(await wingsToken.balanceOf.call(user.address));
+        const userDfiBalanceAfter       = toStr(await dfiToken.balanceOf.call(user.address));
+        const exchangeWingsBalanceAfter = toStr(await wingsToken.balanceOf.call(exchange.address));
 
         userWingsBalanceAfter.should.be.equal(expectedUserWingsBalanceAfter);
         userDfiBalanceAfter.should.be.equal(expectedUserDfiBalanceAfter);
@@ -709,7 +712,7 @@ describe('Ethereum DFI Exchange', () => {
     });
 
     it('fund the Exchange with WINGS to test WINGS withdrawal', async () => {
-        const amountToTransfer = toWei('100', 'ether');
+        const amountToTransfer = toWei('100');
 
         await wingsToken.transfer(exchange.address, amountToTransfer, {from: creator.address});
     });
@@ -727,9 +730,9 @@ describe('Ethereum DFI Exchange', () => {
     });
 
     it('withdraw WINGS', async () => {
-        const amountToWithdraw = toWei('100', 'ether');
+        const amountToWithdraw = toWei('100');
 
-        const expectedExchangeWingsBalanceBefore = toWei('100', 'ether').toString(10);
+        const expectedExchangeWingsBalanceBefore = toWei('100');
         const expectedExchangeWingsBalanceAfter  = '0';
 
         // Make sure that no tokens were lost during the exchanges.
@@ -738,26 +741,26 @@ describe('Ethereum DFI Exchange', () => {
             .minus(USER_WINGS)
             .toString(10);
 
-        const exchangeWingsBalanceBefore = (await wingsToken.balanceOf.call(exchange.address)).toString(10);
+        const exchangeWingsBalanceBefore = toStr(await wingsToken.balanceOf.call(exchange.address));
 
         exchangeWingsBalanceBefore.should.be.equal(expectedExchangeWingsBalanceBefore);
 
         await exchange.withdrawWINGS(creator.address, amountToWithdraw, {from: creator.address});
 
-        const exchangeWingsBalanceAfter = (await wingsToken.balanceOf.call(exchange.address)).toString(10);
-        const creatorWingsBalanceAfter  = (await wingsToken.balanceOf.call(creator.address)).toString(10);
+        const exchangeWingsBalanceAfter = toStr(await wingsToken.balanceOf.call(exchange.address));
+        const creatorWingsBalanceAfter  = toStr(await wingsToken.balanceOf.call(creator.address));
 
         exchangeWingsBalanceAfter.should.be.equal(expectedExchangeWingsBalanceAfter);
         creatorWingsBalanceAfter.should.be.equal(expectedCreatorWingsBalanceAfter);
     });
 
     it('total supply of DFI is zero (all tokens were burn)', async () => {
-        const dfiTotalSupply = (await dfiToken.totalSupply.call()).toString(10);
+        const dfiTotalSupply = toStr(await dfiToken.totalSupply.call());
 
         dfiTotalSupply.should.be.equal('0');
     });
 
-    after('stop test RPC', () => {
+    after('stop the Test RPC', () => {
         testRpc.stop();
     });
 });
