@@ -115,6 +115,13 @@ contract DFIToken is AccessControl, IDFIToken {
     /**
      * Approves `spender` to spend `amount` of caller's tokens.
      *
+     * IMPORTANT: Beware that changing an allowance with this method brings the risk
+     * that someone may use both the old and the new allowance by unfortunate
+     * transaction ordering. One possible solution to mitigate this race
+     * condition is to first reduce the spender's allowance to 0 and set the
+     * desired value afterwards:
+     * https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
+     *
      * Emits an {Approval} event.
      *
      * Requirements:
@@ -150,7 +157,7 @@ contract DFIToken is AccessControl, IDFIToken {
      * Atomically increases the allowance granted to `spender` by the caller.
      *
      * This is an alternative to {approve} that can be used as a mitigation for
-     * problems described in {IERC20-approve}.
+     * problems described in {approve}.
      *
      * Emits an {Approval} event indicating the updated allowance.
      *
@@ -167,7 +174,7 @@ contract DFIToken is AccessControl, IDFIToken {
      * Atomically decreases the allowance granted to `spender` by the caller.
      *
      * This is an alternative to {approve} that can be used as a mitigation for
-     * problems described in {IERC20-approve}.
+     * problems described in {approve}.
      *
      * Emits an {Approval} event indicating the updated allowance.
      *
