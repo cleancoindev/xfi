@@ -12,11 +12,106 @@ This repository is a home for the DFIToken contract as well as the Ethereum DFI 
 
 `Exchange` is the Ethereum DFI Exchange which allows Ethereum accounts to convert their WINGS or ETH to DFI and vice versa.
 
+#### Methods
+
+##### estimateSwapWINGSForDFI
+
+Returns estimation for swap of WINGS-DFI pair.
+
+Input:
+- `amountIn` (`uint256`) - amount of WINGS to swap.
+
+Output:
+- `amounts` (`uint256[]`) estimation for swap of WINGS-DFI pair.
+
+##### estimateSwapETHForDFI
+
+Returns estimation for swap of ETH-DFI pair.
+
+Input:
+- `amountIn` (`uint256`) - amount of ETH to swap.
+
+Output:
+- `amounts` (`uint256[]`) estimation for swap of ETH-DFI pair.
+
+##### estimateSwapDFIForWINGS
+
+Returns estimation for swap of DFI-WINGS pair.
+
+Input:
+- `amountIn` (`uint256`) - amount of DFI to swap.
+
+Output:
+- `amounts` (`uint256[]`) estimation for swap of DFI-WINGS pair.
+
+##### estimateSwapDFIForETH
+
+Returns estimation for swap of DFI-ETH pair.
+
+Input:
+- `amountIn` (`uint256`) - amount of DFI to swap.
+
+Output:
+- `amounts` (`uint256[]`) estimation for swap of DFI-ETH pair.
+
+##### isSwappingStopped
+
+Returns whether swapping is stopped.
+
+##### swapWINGSForDFI
+
+Executes swap of WINGS-DFI pair.
+
+Emits a `SwapWINGSForDFI` event.
+
+Input:
+- `amountIn` (`uint256`) - amount of WINGS to swap.
+
+Output:
+- `amounts` (`uint256[]`) result of a swap of WINGS-DFI pair.
+
+##### swapETHForDFI
+
+Executes swap of ETH-DFI pair.
+
+Emits a `SwapETHForDFI` event.
+
+Input:
+- `amountOutMin` (`uint256`) - minimum amount of DFI to receive.
+
+Output:
+- `amounts` (`uint256[]`) result of a swap of ETH-DFI pair.
+
+##### swapDFIForWINGS
+
+Executes swap of DFI-WINGS pair.
+
+Emits a `SwapDFIForWINGS` event.
+
+Input:
+- `amountIn` (`uint256`) - amount of DFI to swap.
+
+Output:
+- `amounts` (`uint256[]`) result of a swap of DFI-WINGS pair.
+
+##### swapDFIForETH
+
+Executes swap of DFI-ETH pair.
+
+Emits a `SwapDFIForETH` event.
+
+Input:
+- `amountIn` (`uint256`) - amount of DFI to swap.
+- `amountOutMin` (`uint256`) - minimum amount of ETH to receive.
+
+Output:
+- `amounts` (`uint256[]`) result of a swap of DFI-ETH pair.
+
 ## Requirements
 
 - Nodejs ~10.16.2
 - Truffle ~5.1.33
-- Ganache-cli ~6.9.1
+- Ganache-cli ~6.9.1 (for testing)
 
 ## Deploy
 
@@ -33,6 +128,10 @@ Migrate contracts:
 ```bash
 npm run migrate
 ```
+
+**Required environment variables:**
+- `WINGS_TOKEN_ADDRESS` - address of the WINGS Token.
+- `UNISWAP_V2_ROUTER_ADDRESS` - address of the Uniswap V2 Router.
 
 ## Testing
 
