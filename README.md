@@ -1,20 +1,36 @@
 # DFI Token | Ethereum DFI Exchange
 
-This repository is a home for the DFIToken contract as well as the Ethereum DFI Exchange which allows Ethereum accounts to convert their WINGS or ETH to DFI and vice versa.
+This repository is a home for the DFI Token contract as well as the Ethereum DFI Exchange which allows Ethereum accounts to convert their WINGS or ETH to DFI and vice versa.
 
-## Contracts
+## Contents
 
-### DFI Token
+- [DFI Token](#dfi-token)
+- [Exchange](#exchange)
+ - [estimateSwapWINGSForDFI](#estimateSwapWINGSForDFI)
+ - [estimateSwapETHForDFI](#estimateSwapETHForDFI)
+ - [estimateSwapDFIForWINGS](#estimateSwapDFIForWINGS)
+ - [estimateSwapDFIForETH](#estimateSwapDFIForETH)
+ - [isSwappingStopped](#isSwappingStopped)
+ - [swapWINGSForDFI](#swapWINGSForDFI)
+ - [swapETHForDFI](#swapETHForDFI)
+ - [swapDFIForWINGS](#swapDFIForWINGS)
+ - [swapDFIForETH](#swapDFIForETH)
+- [Requirements](#requirements)
+- [Deploy](#deploy)
+- [Testing](#testing)
+- [License](#license)
+
+## DFI Token
 
 `DFIToken` is an extended version of ERC20 standard. This extended version adds minting and token transfer management to the functionality described in the original EIP.
 
-### Exchange
+## Exchange
 
 `Exchange` is the Ethereum DFI Exchange which allows Ethereum accounts to convert their WINGS or ETH to DFI and vice versa.
 
-#### Methods
+### Methods
 
-##### estimateSwapWINGSForDFI
+#### estimateSwapWINGSForDFI
 
 Returns estimation for swap of WINGS-DFI pair.
 
@@ -22,9 +38,9 @@ Input:
 - `amountIn` (`uint256`) - amount of WINGS to swap.
 
 Output:
-- `amounts` (`uint256[]`) estimation for swap of WINGS-DFI pair.
+- `amounts` (`uint256[]`) - estimation for swap of WINGS-DFI pair.
 
-##### estimateSwapETHForDFI
+#### estimateSwapETHForDFI
 
 Returns estimation for swap of ETH-DFI pair.
 
@@ -32,9 +48,9 @@ Input:
 - `amountIn` (`uint256`) - amount of ETH to swap.
 
 Output:
-- `amounts` (`uint256[]`) estimation for swap of ETH-DFI pair.
+- `amounts` (`uint256[]`) - estimation for swap of ETH-DFI pair.
 
-##### estimateSwapDFIForWINGS
+#### estimateSwapDFIForWINGS
 
 Returns estimation for swap of DFI-WINGS pair.
 
@@ -42,9 +58,9 @@ Input:
 - `amountIn` (`uint256`) - amount of DFI to swap.
 
 Output:
-- `amounts` (`uint256[]`) estimation for swap of DFI-WINGS pair.
+- `amounts` (`uint256[]`) - estimation for swap of DFI-WINGS pair.
 
-##### estimateSwapDFIForETH
+#### estimateSwapDFIForETH
 
 Returns estimation for swap of DFI-ETH pair.
 
@@ -52,13 +68,15 @@ Input:
 - `amountIn` (`uint256`) - amount of DFI to swap.
 
 Output:
-- `amounts` (`uint256[]`) estimation for swap of DFI-ETH pair.
+- `amounts` (`uint256[]`) - estimation for swap of DFI-ETH pair.
 
-##### isSwappingStopped
+#### isSwappingStopped
 
 Returns whether swapping is stopped.
 
-##### swapWINGSForDFI
+*NOTE: To receive real-time updates on the status of the swaps, consider listening to `SwapsStarted` and `SwapsStopped` events.*
+
+#### swapWINGSForDFI
 
 Executes swap of WINGS-DFI pair.
 
@@ -68,9 +86,9 @@ Input:
 - `amountIn` (`uint256`) - amount of WINGS to swap.
 
 Output:
-- `amounts` (`uint256[]`) result of a swap of WINGS-DFI pair.
+- `amounts` (`uint256[]`) - result of a swap of WINGS-DFI pair.
 
-##### swapETHForDFI
+#### swapETHForDFI
 
 Executes swap of ETH-DFI pair.
 
@@ -80,9 +98,9 @@ Input:
 - `amountOutMin` (`uint256`) - minimum amount of DFI to receive.
 
 Output:
-- `amounts` (`uint256[]`) result of a swap of ETH-DFI pair.
+- `amounts` (`uint256[]`) - result of a swap of ETH-DFI pair.
 
-##### swapDFIForWINGS
+#### swapDFIForWINGS
 
 Executes swap of DFI-WINGS pair.
 
@@ -92,9 +110,9 @@ Input:
 - `amountIn` (`uint256`) - amount of DFI to swap.
 
 Output:
-- `amounts` (`uint256[]`) result of a swap of DFI-WINGS pair.
+- `amounts` (`uint256[]`) - result of a swap of DFI-WINGS pair.
 
-##### swapDFIForETH
+#### swapDFIForETH
 
 Executes swap of DFI-ETH pair.
 
@@ -105,13 +123,13 @@ Input:
 - `amountOutMin` (`uint256`) - minimum amount of ETH to receive.
 
 Output:
-- `amounts` (`uint256[]`) result of a swap of DFI-ETH pair.
+- `amounts` (`uint256[]`) - result of a swap of DFI-ETH pair.
 
 ## Requirements
 
 - Nodejs ~10.16.2
 - Truffle ~5.1.33
-- Ganache-cli ~6.9.1 (for testing)
+- Ganache-cli ~6.9.1 *(for testing)*
 
 ## Deploy
 
