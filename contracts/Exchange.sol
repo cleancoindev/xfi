@@ -3,6 +3,7 @@
 pragma solidity 0.6.11;
 
 import '@openzeppelin/contracts/access/AccessControl.sol';
+import '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 import './interfaces/IExchange.sol';
 import './interfaces/IDFIToken.sol';
 import './interfaces/IUniswapV2Router.sol';
@@ -23,10 +24,10 @@ import './interfaces/IUniswapV2Router.sol';
  * guarantee minimum amount of output tokens that must be received, all within
  * a single transaction.
  */
-contract Exchange is AccessControl, IExchange {
-    IERC20 public immutable _wingsToken;
-    IDFIToken public immutable _dfiToken;
-    IUniswapV2Router public immutable _uniswapRouter;
+contract Exchange is AccessControl, ReentrancyGuard, IExchange {
+    IERC20 private immutable _wingsToken;
+    IDFIToken private immutable _dfiToken;
+    IUniswapV2Router private immutable _uniswapRouter;
 
     bool private _stopped = false;
 
@@ -34,12 +35,12 @@ contract Exchange is AccessControl, IExchange {
      * Sets {DEFAULT_ADMIN_ROLE} (alias `owner`) role for caller.
      * Initializes Wings Token, DFI Token and Uniswap Router.
      */
-    constructor (address wingsToken, address dfiToken, address uniswapRouter) public {
+    constructor (address wingsToken_, address dfiToken_, address uniswapRouter_) public {
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
 
-        _wingsToken = IERC20(wingsToken);
-        _dfiToken = IDFIToken(dfiToken);
-        _uniswapRouter = IUniswapV2Router(uniswapRouter);
+        _wingsToken = IERC20(wingsToken_);
+        _dfiToken = IDFIToken(dfiToken_);
+        _uniswapRouter = IUniswapV2Router(uniswapRouter_);
     }
 
     /**
@@ -122,7 +123,7 @@ contract Exchange is AccessControl, IExchange {
      * - Contract is not stopped.
      * - Contract is approved to spend `amountIn` of WINGS tokens.
      */
-    function swapWINGSForDFI(uint256 amountIn) external override returns (uint256[] memory amounts) {
+    function swapWINGSForDFI(uint256 amountIn) external override nonReentrant returns (uint256[] memory amounts) {
         _beforeSwap();
 
         amounts = estimateSwapWINGSForDFI(amountIn);
@@ -144,7 +145,7 @@ contract Exchange is AccessControl, IExchange {
      * Requirements:
      * - Contract is not stopped.
      */
-    function swapETHForDFI(uint256 amountOutMin) external payable override returns (uint256[] memory amounts) {
+    function swapETHForDFI(uint256 amountOutMin) external payable override nonReentrant returns (uint256[] memory amounts) {
         _beforeSwap();
 
         address[] memory path = new address[](2);
@@ -170,7 +171,7 @@ contract Exchange is AccessControl, IExchange {
      * - Contract is not stopped.
      * - Contract is approved to spend `amountIn` of DFI tokens.
      */
-    function swapDFIForWINGS(uint256 amountIn) external override returns (uint256[] memory amounts) {
+    function swapDFIForWINGS(uint256 amountIn) external override nonReentrant returns (uint256[] memory amounts) {
         _beforeSwap();
 
         amounts = estimateSwapDFIForWINGS(amountIn);
@@ -194,7 +195,7 @@ contract Exchange is AccessControl, IExchange {
      * - Contract is not stopped.
      * - Contract is approved to spend `amountIn` of DFI tokens.
      */
-    function swapDFIForETH(uint256 amountIn, uint256 amountOutMin) external override returns (uint256[] memory amounts) {
+    function swapDFIForETH(uint256 amountIn, uint256 amountOutMin) external override nonReentrant returns (uint256[] memory amounts) {
         _beforeSwap();
 
         require(_dfiToken.transferFrom(msg.sender, address(this), amountIn), 'Exchange: DFI transferFrom failed');
@@ -259,7 +260,7 @@ contract Exchange is AccessControl, IExchange {
       * - `to` cannot be the zero address.
       * - Caller must have owner role.
       */
-    function withdrawWINGS(address to, uint256 amount) external override returns (bool) {
+    function withdrawWINGS(address to, uint256 amount) external override nonReentrant returns (bool) {
         require(to != address(0), 'Exchange: withdraw to the zero address');
         require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), 'Exchange: sender is not owner');
 
