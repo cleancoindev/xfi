@@ -154,6 +154,8 @@ contract Exchange is AccessControl, ReentrancyGuard, IExchange {
 
         amounts = _uniswapRouter.swapExactETHForTokens{value: msg.value}(amountOutMin, path, address(this), block.timestamp);
 
+        require(amounts[amounts.length - 1] >= amountOutMin, 'Exchange: ETH-DFI swap failed');
+
         require(_dfiToken.mint(msg.sender, amounts[amounts.length - 1]), 'Exchange: DFI mint failed');
 
         emit SwapETHForDFI(msg.sender, amounts[0], amounts[amounts.length - 1]);
@@ -207,6 +209,8 @@ contract Exchange is AccessControl, ReentrancyGuard, IExchange {
         path[1] = _uniswapRouter.WETH();
 
         amounts = _uniswapRouter.swapExactTokensForETH(amountIn, amountOutMin, path, msg.sender, block.timestamp);
+
+        require(amounts[amounts.length - 1] >= amountOutMin, 'Exchange: DFI-ETH swap failed');
 
         emit SwapDFIForETH(msg.sender, amounts[0], amounts[amounts.length - 1]);
     }

@@ -16,8 +16,6 @@ const {toStr, toWei} = helpers;
 const {ZERO_ADDRESS} = helpers;
 
 describe('DFI Token', () => {
-    let token;
-
     const creator    = web3.eth.accounts.create();
     const newOwner   = web3.eth.accounts.create();
     const tempOwner  = web3.eth.accounts.create();
@@ -54,6 +52,8 @@ describe('DFI Token', () => {
         ],
         locked: false
     });
+
+    let token;
 
     before('launch the Test RPC', async () => {
         await testRpc.start(TEST_RPC_PORT);
