@@ -16,7 +16,8 @@ This repository is a home for the DFI Token contract as well as the Ethereum DFI
   - [swapDFIForWINGS](#swapDFIForWINGS)
   - [swapDFIForETH](#swapDFIForETH)
 - [Requirements](#requirements)
-- [Deploy](#deploy)
+- [Compiling](#compiling)
+- [Deploying](#deploying)
 - [Testing](#testing)
 - [License](#license)
 
@@ -131,15 +132,17 @@ Output:
 - Truffle ~5.1.33
 - Ganache-cli ~6.9.1 *(for testing)*
 
-## Deploy
+## Compiling
 
 Configure `truffle-config.js` (see [configuration manual](http://truffleframework.com/docs/advanced/configuration)).
 
-Build contracts:
+Compile contracts:
 
 ```bash
-npm run build
+npm run compile
 ```
+
+## Deploying
 
 Copy and configure `.env`:
 

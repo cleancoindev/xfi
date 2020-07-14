@@ -1,14 +1,13 @@
 {
   "name": "dfi",
   "version": "1.0.0",
-  "description": "",
+  "description": "DFI Token | Ethereum DFI Exchange",
   "main": "truffle-config.js",
   "directories": {
     "test": "test"
   },
   "scripts": {
-    "build": "truffle build",
-    "migrate": "truffle migrate",
+    "compile": "truffle compile",
     "test": "NODE_PATH=. mocha test/index"
   },
   "author": "",
