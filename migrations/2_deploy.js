@@ -6,7 +6,7 @@ const DfiToken = artifacts.require('DFIToken');
 const Exchange = artifacts.require('Exchange');
 
 module.exports = async function (deployer) {
-    const WINGS_TOKEN_ADDRESS    = process.env.WINGS_TOKEN_ADDRESS;
+    const WINGS_TOKEN_ADDRESS       = process.env.WINGS_TOKEN_ADDRESS;
     const UNISWAP_V2_ROUTER_ADDRESS = process.env.UNISWAP_V2_ROUTER_ADDRESS;
 
     if (!WINGS_TOKEN_ADDRESS) {
