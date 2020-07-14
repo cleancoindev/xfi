@@ -144,12 +144,19 @@ npm run build
 Migrate contracts:
 
 ```bash
-npm run migrate
+truffle migrate
 ```
 
 **Required environment variables:**
+- `CREATOR_ADDRESS` - address of the creator account.
 - `WINGS_TOKEN_ADDRESS` - address of the WINGS Token.
 - `UNISWAP_V2_ROUTER_ADDRESS` - address of the Uniswap V2 Router.
+
+To run migration for a specific network, make sure that the network is configured in your `truffle-config.js` and specify the `--network` option, like below:
+
+```bash
+truffle migrate --network live
+```
 
 ## Testing
 
