@@ -20,7 +20,7 @@ import './interfaces/IDFIToken.sol';
  *
  * Finally, the non-standard {decreaseAllowance} and {increaseAllowance}
  * functions have been added to mitigate the well-known issues around setting
- * allowances. See {IERC20-approve}.
+ * allowances.
  */
 contract DFIToken is AccessControl, IDFIToken {
     using SafeMath for uint256;
@@ -90,7 +90,7 @@ contract DFIToken is AccessControl, IDFIToken {
     }
 
     /**
-     * Returnes amount of `owner` tokens that `spender` is allowed to transfer.
+     * Returnes amount of `owner`'s tokens that `spender` is allowed to transfer.
      */
     function allowance(address owner, address spender) external view override returns (uint256) {
         return _allowances[owner][spender];
@@ -142,7 +142,7 @@ contract DFIToken is AccessControl, IDFIToken {
      * Requirements:
      * - `sender` and `recipient` cannot be the zero address.
      * - `sender` must have a balance of at least `amount`.
-     * - the caller must have allowance for ``sender``'s tokens of at least
+     * - the caller must have allowance for `sender`'s tokens of at least
      * `amount`.
      * - Contract isn't stopped.
      */
