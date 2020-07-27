@@ -169,10 +169,10 @@ truffle migrate --network live
 
 ## Testing
 
-Build contracts:
+Compile contracts:
 
 ```bash
-npm run build
+npm run compile
 ```
 
 Run tests:
