@@ -5,19 +5,19 @@ pragma solidity 0.6.11;
 import '@openzeppelin/contracts/access/AccessControl.sol';
 import '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 import './interfaces/IExchange.sol';
-import './interfaces/IDFIToken.sol';
+import './interfaces/IXFIToken.sol';
 import './interfaces/IUniswapV2Router.sol';
 
 /**
  * Implementation of the {IExchange} interface.
  *
- * Ethereum DFI Exchange allows Ethereum accounts to convert their WINGS or ETH
- * to DFI and vice versa.
+ * Ethereum XFI Exchange allows Ethereum accounts to convert their WINGS or ETH
+ * to XFI and vice versa.
  *
- * Swap between WINGS and DFI happens with a 1:1 ratio.
+ * Swap between WINGS and XFI happens with a 1:1 ratio.
  *
  * To enable swap the Exchange plays a role of a storage for WINGS tokens as
- * well as a minter of DFI Tokens.
+ * well as a minter of XFI Tokens.
  *
  * Swaps involving ETH take place using Automated Liquidity Protocol - Uniswap.
  * Uniswap allows to make instant swaps between WINGS-ETH pair that
@@ -26,20 +26,20 @@ import './interfaces/IUniswapV2Router.sol';
  */
 contract Exchange is AccessControl, ReentrancyGuard, IExchange {
     IERC20 private immutable _wingsToken;
-    IDFIToken private immutable _dfiToken;
+    IXFIToken private immutable _xfiToken;
     IUniswapV2Router private immutable _uniswapRouter;
 
     bool private _stopped = false;
 
     /**
      * Sets {DEFAULT_ADMIN_ROLE} (alias `owner`) role for caller.
-     * Initializes Wings Token, DFI Token and Uniswap Router.
+     * Initializes Wings Token, XFI Token and Uniswap Router.
      */
-    constructor (address wingsToken_, address dfiToken_, address uniswapRouter_) public {
+    constructor (address wingsToken_, address xfiToken_, address uniswapRouter_) public {
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
 
         _wingsToken = IERC20(wingsToken_);
-        _dfiToken = IDFIToken(dfiToken_);
+        _xfiToken = IXFIToken(xfiToken_);
         _uniswapRouter = IUniswapV2Router(uniswapRouter_);
     }
 
@@ -51,10 +51,10 @@ contract Exchange is AccessControl, ReentrancyGuard, IExchange {
     }
 
     /**
-     * Returns the address of the DFI Token.
+     * Returns the address of the XFI Token.
      */
-    function dfiToken() external view override returns (address) {
-        return address(_dfiToken);
+    function xfiToken() external view override returns (address) {
+        return address(_xfiToken);
     }
 
     /**
@@ -65,41 +65,21 @@ contract Exchange is AccessControl, ReentrancyGuard, IExchange {
     }
 
     /**
-     * Returns `amounts` estimation for swap of WINGS-DFI pair (1:1 ratio).
+     * Returns `amounts` estimation for swap of WINGS-XFI pair (1:1 ratio).
      */
-    function estimateSwapWINGSForDFI(uint256 amountIn) public view override returns (uint256[] memory amounts) {
+    function estimateSwapWINGSForXFI(uint256 amountIn) public view override returns (uint256[] memory amounts) {
         amounts = new uint256[](2);
         amounts[0] = amountIn;
         amounts[1] = amountIn;
     }
 
     /**
-     * Returns `amounts` estimation for swap of ETH-DFI pair.
+     * Returns `amounts` estimation for swap of ETH-XFI pair.
      */
-    function estimateSwapETHForDFI(uint256 amountIn) external view override returns (uint256[] memory amounts) {
+    function estimateSwapETHForXFI(uint256 amountIn) external view override returns (uint256[] memory amounts) {
         address[] memory path = new address[](2);
         path[0] = _uniswapRouter.WETH();
         path[1] = address(_wingsToken);
-
-        amounts = _uniswapRouter.getAmountsOut(amountIn, path);
-    }
-
-    /**
-     * Returns `amounts` estimation for swap of DFI-WINGS pair (1:1 ratio).
-     */
-    function estimateSwapDFIForWINGS(uint256 amountIn) public view override returns (uint256[] memory amounts) {
-        amounts = new uint256[](2);
-        amounts[0] = amountIn;
-        amounts[1] = amountIn;
-    }
-
-    /**
-     * Returns `amounts` estimation for swap of DFI-ETH pair.
-     */
-    function estimateSwapDFIForETH(uint256 amountIn) external view override returns (uint256[] memory amounts) {
-        address[] memory path = new address[](2);
-        path[0] = address(_wingsToken);
-        path[1] = _uniswapRouter.WETH();
 
         amounts = _uniswapRouter.getAmountsOut(amountIn, path);
     }
@@ -112,9 +92,9 @@ contract Exchange is AccessControl, ReentrancyGuard, IExchange {
     }
 
     /**
-     * Executes swap of WINGS-DFI pair.
+     * Executes swap of WINGS-XFI pair.
      *
-     * Emits a {SwapWINGSForDFI} event.
+     * Emits a {SwapWINGSForXFI} event.
      *
      * Returns:
      * - `amounts` the input token amount and all subsequent output token amounts.
@@ -123,21 +103,21 @@ contract Exchange is AccessControl, ReentrancyGuard, IExchange {
      * - Contract is not stopped.
      * - Contract is approved to spend `amountIn` of WINGS tokens.
      */
-    function swapWINGSForDFI(uint256 amountIn) external override nonReentrant returns (uint256[] memory amounts) {
+    function swapWINGSForXFI(uint256 amountIn) external override nonReentrant returns (uint256[] memory amounts) {
         _beforeSwap();
 
-        amounts = estimateSwapWINGSForDFI(amountIn);
+        amounts = estimateSwapWINGSForXFI(amountIn);
 
         require(_wingsToken.transferFrom(msg.sender, address(this), amounts[0]), 'Exchange: WINGS transferFrom failed');
-        require(_dfiToken.mint(msg.sender, amounts[amounts.length - 1]), 'Exchange: DFI mint failed');
+        require(_xfiToken.mint(msg.sender, amounts[amounts.length - 1]), 'Exchange: XFI mint failed');
 
-        emit SwapWINGSForDFI(msg.sender, amounts[0], amounts[amounts.length - 1]);
+        emit SwapWINGSForXFI(msg.sender, amounts[0], amounts[amounts.length - 1]);
     }
 
     /**
-     * Executes swap of ETH-DFI pair.
+     * Executes swap of ETH-XFI pair.
      *
-     * Emits a {SwapETHForDFI} event.
+     * Emits a {SwapETHForXFI} event.
      *
      * Returns:
      * - `amounts` the input token amount and all subsequent output token amounts.
@@ -145,7 +125,7 @@ contract Exchange is AccessControl, ReentrancyGuard, IExchange {
      * Requirements:
      * - Contract is not stopped.
      */
-    function swapETHForDFI(uint256 amountOutMin) external payable override nonReentrant returns (uint256[] memory amounts) {
+    function swapETHForXFI(uint256 amountOutMin) external payable override nonReentrant returns (uint256[] memory amounts) {
         _beforeSwap();
 
         address[] memory path = new address[](2);
@@ -154,65 +134,11 @@ contract Exchange is AccessControl, ReentrancyGuard, IExchange {
 
         amounts = _uniswapRouter.swapExactETHForTokens{value: msg.value}(amountOutMin, path, address(this), block.timestamp);
 
-        require(amounts[amounts.length - 1] >= amountOutMin, 'Exchange: ETH-DFI swap failed');
+        require(amounts[amounts.length - 1] >= amountOutMin, 'Exchange: ETH-XFI swap failed');
 
-        require(_dfiToken.mint(msg.sender, amounts[amounts.length - 1]), 'Exchange: DFI mint failed');
+        require(_xfiToken.mint(msg.sender, amounts[amounts.length - 1]), 'Exchange: XFI mint failed');
 
-        emit SwapETHForDFI(msg.sender, amounts[0], amounts[amounts.length - 1]);
-    }
-
-    /**
-     * Executes swap of DFI-WINGS pair.
-     *
-     * Emits a {SwapDFIForWINGS} event.
-     *
-     * Returns:
-     * - `amounts` the input token amount and all subsequent output token amounts.
-     *
-     * Requirements:
-     * - Contract is not stopped.
-     * - Contract is approved to spend `amountIn` of DFI tokens.
-     */
-    function swapDFIForWINGS(uint256 amountIn) external override nonReentrant returns (uint256[] memory amounts) {
-        _beforeSwap();
-
-        amounts = estimateSwapDFIForWINGS(amountIn);
-
-        require(_dfiToken.transferFrom(msg.sender, address(this), amountIn), 'Exchange: DFI transferFrom failed');
-        require(_dfiToken.burn(address(this), amountIn), 'Exchange: DFI burn failed');
-        require(_wingsToken.transfer(msg.sender, amounts[amounts.length - 1]), 'Exchange: WINGS transfer failed');
-
-        emit SwapDFIForWINGS(msg.sender, amounts[0], amounts[amounts.length - 1]);
-    }
-
-    /**
-     * Executes swap of DFI-ETH pair.
-     *
-     * Emits a {SwapDFIForETH} event.
-     *
-     * Returns:
-     * - `amounts` the input token amount and all subsequent output token amounts.
-     *
-     * Requirements:
-     * - Contract is not stopped.
-     * - Contract is approved to spend `amountIn` of DFI tokens.
-     */
-    function swapDFIForETH(uint256 amountIn, uint256 amountOutMin) external override nonReentrant returns (uint256[] memory amounts) {
-        _beforeSwap();
-
-        require(_dfiToken.transferFrom(msg.sender, address(this), amountIn), 'Exchange: DFI transferFrom failed');
-        require(_dfiToken.burn(address(this), amountIn), 'Exchange: DFI burn failed');
-        require(_wingsToken.approve(address(_uniswapRouter), amountIn), 'Exchange: WINGS approve failed');
-
-        address[] memory path = new address[](2);
-        path[0] = address(_wingsToken);
-        path[1] = _uniswapRouter.WETH();
-
-        amounts = _uniswapRouter.swapExactTokensForETH(amountIn, amountOutMin, path, msg.sender, block.timestamp);
-
-        require(amounts[amounts.length - 1] >= amountOutMin, 'Exchange: DFI-ETH swap failed');
-
-        emit SwapDFIForETH(msg.sender, amounts[0], amounts[amounts.length - 1]);
+        emit SwapETHForXFI(msg.sender, amounts[0], amounts[amounts.length - 1]);
     }
 
     /**

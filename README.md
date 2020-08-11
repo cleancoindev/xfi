@@ -1,75 +1,54 @@
-# DFI Token | Ethereum DFI Exchange
+# XFI Token | Ethereum XFI Exchange
 
-This repository is a home for the DFI Token contract as well as the Ethereum DFI Exchange which allows Ethereum accounts to convert their WINGS or ETH to DFI and vice versa.
+This repository is a home for the XFI Token contract as well as the Ethereum XFI Exchange which allows Ethereum accounts to convert their WINGS or ETH to XFI.
 
 ## Contents
 
-- [DFI Token](#dfi-token)
-- [Exchange](#exchange)
-  - [estimateSwapWINGSForDFI](#estimateSwapWINGSForDFI)
-  - [estimateSwapETHForDFI](#estimateSwapETHForDFI)
-  - [estimateSwapDFIForWINGS](#estimateSwapDFIForWINGS)
-  - [estimateSwapDFIForETH](#estimateSwapDFIForETH)
-  - [isSwappingStopped](#isSwappingStopped)
-  - [swapWINGSForDFI](#swapWINGSForDFI)
-  - [swapETHForDFI](#swapETHForDFI)
-  - [swapDFIForWINGS](#swapDFIForWINGS)
-  - [swapDFIForETH](#swapDFIForETH)
-- [Requirements](#requirements)
-- [Compiling](#compiling)
-- [Deploying](#deploying)
-- [Testing](#testing)
-- [License](#license)
+- [XFI Token | Ethereum XFI Exchange](#xfi-token--ethereum-xfi-exchange)
+  - [Contents](#contents)
+  - [XFI Token](#xfi-token)
+  - [Exchange](#exchange)
+    - [Methods](#methods)
+      - [estimateSwapWINGSForXFI](#estimateswapwingsforxfi)
+      - [estimateSwapETHForXFI](#estimateswapethforxfi)
+      - [isSwappingStopped](#isswappingstopped)
+      - [swapWINGSForXFI](#swapwingsforxfi)
+      - [swapETHForXFI](#swapethforxfi)
+  - [Requirements](#requirements)
+  - [Compiling](#compiling)
+  - [Deploying](#deploying)
+  - [Testing](#testing)
+  - [License](#license)
 
-## DFI Token
+## XFI Token
 
-`DFIToken` is an extended version of ERC20 standard. This extended version adds minting and token transfer management to the functionality described in the original EIP.
+`XFIToken` is an extended version of ERC20 standard. This extended version adds minting and token transfer management to the functionality described in the original EIP.
 
 ## Exchange
 
-`Exchange` is the Ethereum DFI Exchange which allows Ethereum accounts to convert their WINGS or ETH to DFI and vice versa.
+`Exchange` is the Ethereum XFI Exchange which allows Ethereum accounts to convert their WINGS or ETH to XFI and vice versa.
 
 ### Methods
 
-#### estimateSwapWINGSForDFI
+#### estimateSwapWINGSForXFI
 
-Returns estimation for swap of WINGS-DFI pair.
+Returns estimation for swap of WINGS-XFI pair.
 
 Input:
 - `amountIn` (`uint256`) - amount of WINGS to swap.
 
 Output:
-- `amounts` (`uint256[]`) - estimation for swap of WINGS-DFI pair.
+- `amounts` (`uint256[]`) - estimation for swap of WINGS-XFI pair.
 
-#### estimateSwapETHForDFI
+#### estimateSwapETHForXFI
 
-Returns estimation for swap of ETH-DFI pair.
+Returns estimation for swap of ETH-XFI pair.
 
 Input:
 - `amountIn` (`uint256`) - amount of ETH to swap.
 
 Output:
-- `amounts` (`uint256[]`) - estimation for swap of ETH-DFI pair.
-
-#### estimateSwapDFIForWINGS
-
-Returns estimation for swap of DFI-WINGS pair.
-
-Input:
-- `amountIn` (`uint256`) - amount of DFI to swap.
-
-Output:
-- `amounts` (`uint256[]`) - estimation for swap of DFI-WINGS pair.
-
-#### estimateSwapDFIForETH
-
-Returns estimation for swap of DFI-ETH pair.
-
-Input:
-- `amountIn` (`uint256`) - amount of DFI to swap.
-
-Output:
-- `amounts` (`uint256[]`) - estimation for swap of DFI-ETH pair.
+- `amounts` (`uint256[]`) - estimation for swap of ETH-XFI pair.
 
 #### isSwappingStopped
 
@@ -77,54 +56,29 @@ Returns whether swapping is stopped.
 
 *NOTE: To receive real-time updates on the status of the swaps, consider listening to `SwapsStarted` and `SwapsStopped` events.*
 
-#### swapWINGSForDFI
+#### swapWINGSForXFI
 
-Executes swap of WINGS-DFI pair.
+Executes swap of WINGS-XFI pair.
 
-Emits a `SwapWINGSForDFI` event.
+Emits a `SwapWINGSForXFI` event.
 
 Input:
 - `amountIn` (`uint256`) - amount of WINGS to swap.
 
 Output:
-- `amounts` (`uint256[]`) - result of a swap of WINGS-DFI pair.
+- `amounts` (`uint256[]`) - result of a swap of WINGS-XFI pair.
 
-#### swapETHForDFI
+#### swapETHForXFI
 
-Executes swap of ETH-DFI pair.
+Executes swap of ETH-XFI pair.
 
-Emits a `SwapETHForDFI` event.
-
-Input:
-- `amountOutMin` (`uint256`) - minimum amount of DFI to receive.
-
-Output:
-- `amounts` (`uint256[]`) - result of a swap of ETH-DFI pair.
-
-#### swapDFIForWINGS
-
-Executes swap of DFI-WINGS pair.
-
-Emits a `SwapDFIForWINGS` event.
+Emits a `SwapETHForXFI` event.
 
 Input:
-- `amountIn` (`uint256`) - amount of DFI to swap.
+- `amountOutMin` (`uint256`) - minimum amount of XFI to receive.
 
 Output:
-- `amounts` (`uint256[]`) - result of a swap of DFI-WINGS pair.
-
-#### swapDFIForETH
-
-Executes swap of DFI-ETH pair.
-
-Emits a `SwapDFIForETH` event.
-
-Input:
-- `amountIn` (`uint256`) - amount of DFI to swap.
-- `amountOutMin` (`uint256`) - minimum amount of ETH to receive.
-
-Output:
-- `amounts` (`uint256[]`) - result of a swap of DFI-ETH pair.
+- `amounts` (`uint256[]`) - result of a swap of ETH-XFI pair.
 
 ## Requirements
 

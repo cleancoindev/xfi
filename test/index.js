@@ -24,6 +24,6 @@ global.helpers  = helpers;
 global.TestRpc  = TestRpc;
 
 describe('Integration', () => {
-    require('test/integration/dfi-token');
+    require('test/integration/xfi-token');
     require('test/integration/exchange');
 });

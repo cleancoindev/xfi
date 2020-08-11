@@ -1,9 +1,9 @@
 /* global Web3 contract helpers TestRpc */
 
 /**
- * Integration test which covers functionality of DFI Token.
+ * Integration test which covers functionality of XFI Token.
  *
- * @module test/integration/dfi-token
+ * @module test/integration/xfi-token
  */
 
 'use strict';
@@ -15,7 +15,7 @@ const web3 = new Web3(`http://localhost:${TEST_RPC_PORT}`);
 const {toStr, toWei} = helpers;
 const {ZERO_ADDRESS} = helpers;
 
-describe('DFI Token', () => {
+describe('XFI Token', () => {
     const creator    = web3.eth.accounts.create();
     const newOwner   = web3.eth.accounts.create();
     const tempOwner  = web3.eth.accounts.create();
@@ -62,7 +62,7 @@ describe('DFI Token', () => {
     before('deploy', async () => {
         const web3Provider = new Web3.providers.HttpProvider(`http://localhost:${TEST_RPC_PORT}`);
 
-        const TokenJson = require('build/contracts/DFIToken.json');
+        const TokenJson = require('build/contracts/XFIToken.json');
         const Token     = contract({abi: TokenJson.abi, unlinked_binary: TokenJson.bytecode});
         Token.setProvider(web3Provider);
 
@@ -76,7 +76,7 @@ describe('DFI Token', () => {
 
         decimals.should.be.equal(18);
         name.should.be.equal('dfinance');
-        symbol.should.be.equal('DFI');
+        symbol.should.be.equal('XFI');
     });
 
     it('total supply is zero', async () => {
@@ -209,7 +209,7 @@ describe('DFI Token', () => {
         } catch (error) {
             if (!error.reason) { throw error; }
 
-            error.reason.should.be.equal('DFIToken: sender is not minter');
+            error.reason.should.be.equal('XFIToken: sender is not minter');
         }
     });
 
@@ -235,7 +235,7 @@ describe('DFI Token', () => {
         } catch (error) {
             if (!error.reason) { throw error; }
 
-            error.reason.should.be.equal('DFIToken: mint to the zero address');
+            error.reason.should.be.equal('XFIToken: mint to the zero address');
         }
     });
 
@@ -276,7 +276,7 @@ describe('DFI Token', () => {
         } catch (error) {
             if (!error.reason) { throw error; }
 
-            error.reason.should.be.equal('DFIToken: transfer to the zero address');
+            error.reason.should.be.equal('XFIToken: transfer to the zero address');
         }
     });
 
@@ -317,7 +317,7 @@ describe('DFI Token', () => {
         } catch (error) {
             if (!error.reason) { throw error; }
 
-            error.reason.should.be.equal('DFIToken: approve to the zero address');
+            error.reason.should.be.equal('XFIToken: approve to the zero address');
         }
     });
 
@@ -352,7 +352,7 @@ describe('DFI Token', () => {
         } catch (error) {
             if (!error.reason) { throw error; }
 
-            error.reason.should.be.equal('DFIToken: decreased allowance below zero');
+            error.reason.should.be.equal('XFIToken: decreased allowance below zero');
         }
     });
 
@@ -376,7 +376,7 @@ describe('DFI Token', () => {
         } catch (error) {
             if (!error.reason) { throw error; }
 
-            error.reason.should.be.equal('DFIToken: approve to the zero address');
+            error.reason.should.be.equal('XFIToken: approve to the zero address');
         }
     });
 
@@ -400,7 +400,7 @@ describe('DFI Token', () => {
         } catch (error) {
             if (!error.reason) { throw error; }
 
-            error.reason.should.be.equal('DFIToken: transfer from the zero address');
+            error.reason.should.be.equal('XFIToken: transfer from the zero address');
         }
     });
 
@@ -412,7 +412,7 @@ describe('DFI Token', () => {
         } catch (error) {
             if (!error.reason) { throw error; }
 
-            error.reason.should.be.equal('DFIToken: transfer to the zero address');
+            error.reason.should.be.equal('XFIToken: transfer to the zero address');
         }
     });
 
@@ -452,142 +452,6 @@ describe('DFI Token', () => {
         toStr(secondLog.args.value).should.be.equal('0');
     });
 
-    it('ex-owner can\'t stop transfers', async () => {
-        try {
-            await token.stopTransfers({from: tempOwner.address});
-
-            throw Error('Should revert');
-        } catch (error) {
-            if (!error.reason) { throw error; }
-
-            error.reason.should.be.equal('DFIToken: sender is not owner');
-        }
-    });
-
-    it('owner can stop transfers', async () => {
-        const transferringIsStopped = await token.isTransferringStopped.call();
-
-        transferringIsStopped.should.be.false;
-
-        const txResult = await token.stopTransfers({from: creator.address});
-
-        const transferringIsStoppedAfter = await token.isTransferringStopped.call();
-
-        transferringIsStoppedAfter.should.be.true;
-
-        // Check events emitted during transaction.
-
-        txResult.logs.length.should.be.equal(1);
-
-        const firstLog = txResult.logs[0];
-
-        firstLog.event.should.be.equal('TransfersStopped');
-    });
-
-    it('doesn\'t allow to stop transfers when transfers are stopped', async () => {
-        try {
-            await token.stopTransfers({from: creator.address});
-
-            throw Error('Should revert');
-        } catch (error) {
-            if (!error.reason) { throw error; }
-
-            error.reason.should.be.equal('DFIToken: transferring is stopped');
-        }
-    });
-
-    it('doesn\'t allow to transfer when transferring is stopped', async () => {
-        try {
-            await token.transfer(firstUser.address, '1', {from: secondUser.address});
-
-            throw Error('Should revert');
-        } catch (error) {
-            if (!error.reason) { throw error; }
-
-            error.reason.should.be.equal('DFIToken: transferring is stopped');
-        }
-    });
-
-    it('doesn\'t allow to transfer from when transferring is stopped', async () => {
-        try {
-            await token.transferFrom(firstUser.address, secondUser.address, '1', {from: secondUser.address});
-
-            throw Error('Should revert');
-        } catch (error) {
-            if (!error.reason) { throw error; }
-
-            error.reason.should.be.equal('DFIToken: transferring is stopped');
-        }
-    });
-
-    it('doesn\'t allow to mint when transferring is stopped', async () => {
-        try {
-            await token.mint(firstUser.address, '1', {from: minter.address});
-
-            throw Error('Should revert');
-        } catch (error) {
-            if (!error.reason) { throw error; }
-
-            error.reason.should.be.equal('DFIToken: transferring is stopped');
-        }
-    });
-
-    it('doesn\'t allow to burn when transferring is stopped', async () => {
-        try {
-            await token.burn(firstUser.address, '1', {from: minter.address});
-
-            throw Error('Should revert');
-        } catch (error) {
-            if (!error.reason) { throw error; }
-
-            error.reason.should.be.equal('DFIToken: transferring is stopped');
-        }
-    });
-
-    it('ex-owner can\'t start transfers', async () => {
-        try {
-            await token.startTransfers({from: tempOwner.address});
-
-            throw Error('Should revert');
-        } catch (error) {
-            if (!error.reason) { throw error; }
-
-            error.reason.should.be.equal('DFIToken: sender is not owner');
-        }
-    });
-
-    it('owner can start transfers', async () => {
-        const transferringIsStopped = await token.isTransferringStopped.call();
-
-        transferringIsStopped.should.be.true;
-
-        const txResult = await token.startTransfers({from: creator.address});
-
-        const transferringIsStoppedAfter = await token.isTransferringStopped.call();
-
-        transferringIsStoppedAfter.should.be.false;
-
-        // Check events emitted during transaction.
-
-        txResult.logs.length.should.be.equal(1);
-
-        const firstLog = txResult.logs[0];
-
-        firstLog.event.should.be.equal('TransfersStarted');
-    });
-
-    it('doesn\'t allow to start transfers when transferring is not stopped', async () => {
-        try {
-            await token.startTransfers({from: creator.address});
-
-            throw Error('Should revert');
-        } catch (error) {
-            if (!error.reason) { throw error; }
-
-            error.reason.should.be.equal('DFIToken: transferring is not stopped');
-        }
-    });
-
     it('doesn\'t allow to burn zero address tokens', async () => {
         try {
             await token.burn(ZERO_ADDRESS, '1', {from: minter.address});
@@ -596,7 +460,7 @@ describe('DFI Token', () => {
         } catch (error) {
             if (!error.reason) { throw error; }
 
-            error.reason.should.be.equal('DFIToken: burn from the zero address');
+            error.reason.should.be.equal('XFIToken: burn from the zero address');
         }
     });
 
@@ -654,7 +518,7 @@ describe('DFI Token', () => {
         } catch (error) {
             if (!error.reason) { throw error; }
 
-            error.reason.should.be.equal('DFIToken: sender is not minter');
+            error.reason.should.be.equal('XFIToken: sender is not minter');
         }
     });
 
@@ -666,7 +530,7 @@ describe('DFI Token', () => {
         } catch (error) {
             if (!error.reason) { throw error; }
 
-            error.reason.should.be.equal('DFIToken: sender is not minter');
+            error.reason.should.be.equal('XFIToken: sender is not minter');
         }
     });
 

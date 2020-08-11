@@ -2,13 +2,18 @@
 
 'use strict';
 
-const DfiToken = artifacts.require('DFIToken');
+const XfiToken = artifacts.require('XFIToken');
 const Exchange = artifacts.require('Exchange');
 
 module.exports = async function deploy(deployer) {
+    if (!process.env.EXCHANGE) {
+        return
+    }
+
     const CREATOR_ADDRESS           = process.env.CREATOR_ADDRESS;
     const WINGS_TOKEN_ADDRESS       = process.env.WINGS_TOKEN_ADDRESS;
     const UNISWAP_V2_ROUTER_ADDRESS = process.env.UNISWAP_V2_ROUTER_ADDRESS;
+    const XFI_TOKEN_ADDRESS = process.env.XFI_TOKEN_ADDRESS;
 
     if (!CREATOR_ADDRESS) {
         throw 'CREATOR_ADDRESS is missing';
@@ -22,15 +27,16 @@ module.exports = async function deploy(deployer) {
         throw 'UNISWAP_V2_ROUTER_ADDRESS is missing';
     }
 
-    // Deploy the DFI Token.
-    await deployer.deploy(DfiToken);
+    if (!XFI_TOKEN_ADDRESS) {
+        throw 'XFI_TOKEN_ADDRESS is missing';
+    }
 
     // Deploy the Exchange.
-    await deployer.deploy(Exchange, WINGS_TOKEN_ADDRESS, DfiToken.address, UNISWAP_V2_ROUTER_ADDRESS);
+    await deployer.deploy(Exchange, WINGS_TOKEN_ADDRESS, XFI_TOKEN_ADDRESS, UNISWAP_V2_ROUTER_ADDRESS);
 
     // Grant the Exchange role of minter.
-    const dfiToken   = await DfiToken.at(DfiToken.address);
-    const minterRole = await dfiToken.MINTER_ROLE.call();
+    const xfiToken   = await XfiToken.at(XFI_TOKEN_ADDRESS);
+    const minterRole = await xfiToken.MINTER_ROLE.call();
 
-    await dfiToken.grantRole(minterRole, Exchange.address, {from: CREATOR_ADDRESS});
+    await xfiToken.grantRole(minterRole, Exchange.address, {from: CREATOR_ADDRESS});
 };

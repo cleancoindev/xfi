@@ -1,7 +1,7 @@
 {
-  "name": "dfi",
+  "name": "xfi",
   "version": "1.0.0",
-  "description": "DFI Token | Ethereum DFI Exchange",
+  "description": "XFI Token | Ethereum XFI Exchange",
   "main": "truffle-config.js",
   "directories": {
     "test": "test"

@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity 0.6.11;
 
 import '@openzeppelin/contracts/math/SafeMath.sol';
 import '@openzeppelin/contracts/access/AccessControl.sol';
-import './interfaces/IDFIToken.sol';
+import './interfaces/IXFIToken.sol';
 
 /**
- * Implementation of the {IDFIToken} interface.
+ * Implementation of the {IXFIToken} interface.
  *
  * We have followed general OpenZeppelin guidelines: functions revert instead
  * of returning `false` on failure. This behavior is nonetheless conventional
@@ -22,7 +21,7 @@ import './interfaces/IDFIToken.sol';
  * functions have been added to mitigate the well-known issues around setting
  * allowances.
  */
-contract DFIToken is AccessControl, IDFIToken {
+contract XFIToken is AccessControl, IXFIToken {
     using SafeMath for uint256;
     using Address for address;
 
@@ -33,12 +32,10 @@ contract DFIToken is AccessControl, IDFIToken {
     uint256 private _totalSupply;
 
     string private constant _name = 'dfinance';
-    string private constant _symbol = 'DFI';
+    string private constant _symbol = 'XFI';
     uint8 private constant _decimals = 18;
 
     bytes32 public constant MINTER_ROLE = keccak256('minter');
-
-    bool private _stopped = false;
 
     /**
      * Sets {DEFAULT_ADMIN_ROLE} (alias `owner`) role for caller.
@@ -83,13 +80,6 @@ contract DFIToken is AccessControl, IDFIToken {
     }
 
     /**
-     * Returns whether transfering is stopped.
-     */
-    function isTransferringStopped() external view override returns (bool) {
-        return _stopped;
-    }
-
-    /**
      * Returnes amount of `owner`'s tokens that `spender` is allowed to transfer.
      */
     function allowance(address owner, address spender) external view override returns (uint256) {
@@ -104,7 +94,6 @@ contract DFIToken is AccessControl, IDFIToken {
      * Requirements:
      * - `recipient` cannot be the zero address.
      * - the caller must have a balance of at least `amount`.
-     * - Contract isn't stopped.
      */
     function transfer(address recipient, uint256 amount) external override returns (bool) {
         _transfer(msg.sender, recipient, amount);
@@ -144,11 +133,10 @@ contract DFIToken is AccessControl, IDFIToken {
      * - `sender` must have a balance of at least `amount`.
      * - the caller must have allowance for `sender`'s tokens of at least
      * `amount`.
-     * - Contract isn't stopped.
      */
     function transferFrom(address sender, address recipient, uint256 amount) external override returns (bool) {
         _transfer(sender, recipient, amount);
-        _approve(sender, msg.sender, _allowances[sender][msg.sender].sub(amount, 'DFIToken: transfer amount exceeds allowance'));
+        _approve(sender, msg.sender, _allowances[sender][msg.sender].sub(amount, 'XFIToken: transfer amount exceeds allowance'));
 
         return true;
     }
@@ -184,7 +172,7 @@ contract DFIToken is AccessControl, IDFIToken {
      * `subtractedValue`.
      */
     function decreaseAllowance(address spender, uint256 subtractedValue) external override returns (bool) {
-        _approve(msg.sender, spender, _allowances[msg.sender][spender].sub(subtractedValue, 'DFIToken: decreased allowance below zero'));
+        _approve(msg.sender, spender, _allowances[msg.sender][spender].sub(subtractedValue, 'XFIToken: decreased allowance below zero'));
 
         return true;
     }
@@ -198,10 +186,9 @@ contract DFIToken is AccessControl, IDFIToken {
      * Requirements:
      * - Caller must have minter role.
      * - `account` cannot be the zero address.
-     * - Contract isn't stopped.
      */
     function mint(address account, uint256 amount) external override returns (bool) {
-        require(hasRole(MINTER_ROLE, msg.sender), 'DFIToken: sender is not minter');
+        require(hasRole(MINTER_ROLE, msg.sender), 'XFIToken: sender is not minter');
 
         _mint(account, amount);
 
@@ -218,55 +205,15 @@ contract DFIToken is AccessControl, IDFIToken {
      * - Caller must have minter role.
      * - `account` cannot be the zero address.
      * - `account` must have at least `amount` tokens.
-     * - Contract isn't stopped.
      */
     function burn(address account, uint256 amount) external override returns (bool) {
-        require(hasRole(MINTER_ROLE, msg.sender), 'DFIToken: sender is not minter');
+        require(hasRole(MINTER_ROLE, msg.sender), 'XFIToken: sender is not minter');
 
         _burn(account, amount);
 
         return true;
     }
 
-    /**
-     * Starts all transfers.
-     *
-     * Emits a {TransfersStarted} event.
-     *
-     * Requirements:
-     * - Caller must have owner role.
-     * - Contract is stopped.
-     */
-    function startTransfers() external override returns (bool) {
-        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), 'DFIToken: sender is not owner');
-        require(_stopped, 'DFIToken: transferring is not stopped');
-
-        _stopped = false;
-
-        emit TransfersStarted();
-
-        return true;
-    }
-
-    /**
-     * Stops all transfers.
-     *
-     * Emits a {TransfersStopped} event.
-     *
-     * Requirements:
-     * - Caller must have owner role.
-     * - Contract isn't stopped.
-     */
-    function stopTransfers() external override returns (bool) {
-        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), 'DFIToken: sender is not owner');
-        require(!_stopped, 'DFIToken: transferring is stopped');
-
-        _stopped = true;
-
-        emit TransfersStopped();
-
-        return true;
-    }
 
     /**
      * Moves tokens `amount` from `sender` to `recipient`.
@@ -277,14 +224,12 @@ contract DFIToken is AccessControl, IDFIToken {
      * - `sender` cannot be the zero address.
      * - `recipient` cannot be the zero address.
      * - `sender` must have a balance of at least `amount`.
-     * - Contract isn't stopped.
      */
     function _transfer(address sender, address recipient, uint256 amount) internal {
-        require(sender != address(0), 'DFIToken: transfer from the zero address');
-        require(recipient != address(0), 'DFIToken: transfer to the zero address');
-        require(!_stopped, 'DFIToken: transferring is stopped');
+        require(sender != address(0), 'XFIToken: transfer from the zero address');
+        require(recipient != address(0), 'XFIToken: transfer to the zero address');
 
-        _balances[sender] = _balances[sender].sub(amount, 'DFIToken: transfer amount exceeds balance');
+        _balances[sender] = _balances[sender].sub(amount, 'XFIToken: transfer amount exceeds balance');
         _balances[recipient] = _balances[recipient].add(amount);
         emit Transfer(sender, recipient, amount);
     }
@@ -297,11 +242,9 @@ contract DFIToken is AccessControl, IDFIToken {
      *
      * Requirements:
      * - `account` cannot be the zero address.
-     * - Contract isn't stopped.
      */
     function _mint(address account, uint256 amount) internal {
-        require(account != address(0), 'DFIToken: mint to the zero address');
-        require(!_stopped, 'DFIToken: transferring is stopped');
+        require(account != address(0), 'XFIToken: mint to the zero address');
 
         _totalSupply = _totalSupply.add(amount);
         _balances[account] = _balances[account].add(amount);
@@ -317,13 +260,11 @@ contract DFIToken is AccessControl, IDFIToken {
      * Requirements:
      * - `account` cannot be the zero address.
      * - `account` must have at least `amount` tokens.
-     * - Contract isn't stopped.
      */
     function _burn(address account, uint256 amount) internal {
-        require(account != address(0), 'DFIToken: burn from the zero address');
-        require(!_stopped, 'DFIToken: transferring is stopped');
+        require(account != address(0), 'XFIToken: burn from the zero address');
 
-        _balances[account] = _balances[account].sub(amount, 'DFIToken: burn amount exceeds balance');
+        _balances[account] = _balances[account].sub(amount, 'XFIToken: burn amount exceeds balance');
         _totalSupply = _totalSupply.sub(amount);
         emit Transfer(account, address(0), amount);
     }
@@ -338,8 +279,8 @@ contract DFIToken is AccessControl, IDFIToken {
      * - `spender` cannot be the zero address.
      */
     function _approve(address owner, address spender, uint256 amount) internal {
-        require(owner != address(0), 'DFIToken: approve from the zero address');
-        require(spender != address(0), 'DFIToken: approve to the zero address');
+        require(owner != address(0), 'XFIToken: approve from the zero address');
+        require(spender != address(0), 'XFIToken: approve to the zero address');
 
         _allowances[owner][spender] = amount;
         emit Approval(owner, spender, amount);
