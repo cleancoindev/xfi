@@ -5,7 +5,7 @@
 const XfiToken = artifacts.require('XFIToken');
 
 module.exports = async function deploy(deployer) {
-    if (!process.env.TOKEN) {
+    if (!process.env.XFI) {
         return
     }
 
