@@ -30,17 +30,20 @@ contract Exchange is AccessControl, ReentrancyGuard, IExchange {
     IUniswapV2Router private immutable _uniswapRouter;
 
     bool private _stopped = false;
+    uint256 private _deadline;
 
     /**
      * Sets {DEFAULT_ADMIN_ROLE} (alias `owner`) role for caller.
      * Initializes Wings Token, XFI Token and Uniswap Router.
      */
-    constructor (address wingsToken_, address xfiToken_, address uniswapRouter_) public {
+    constructor (address wingsToken_, address xfiToken_, address uniswapRouter_, uint256 deadline_) public {
+        require(deadline_ > block.timestamp, 'Exchange: deadline must be great than current timestamp');
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
 
         _wingsToken = IERC20(wingsToken_);
         _xfiToken = IXFIToken(xfiToken_);
         _uniswapRouter = IUniswapV2Router(uniswapRouter_);
+        _deadline = deadline_;
     }
 
     /**
@@ -55,6 +58,10 @@ contract Exchange is AccessControl, ReentrancyGuard, IExchange {
      */
     function xfiToken() external view override returns (address) {
         return address(_xfiToken);
+    }
+
+    function deadline() external view override returns (uint256) {
+        return _deadline;
     }
 
     /**
@@ -181,6 +188,26 @@ contract Exchange is AccessControl, ReentrancyGuard, IExchange {
         return true;
     }
 
+    /**
+     * Change deadline timestamp.
+     *
+     * Emit a {DeadlineChanged} event.
+     * Requirements:
+     * - Caller must have owner role.
+     * - Deadline must be great than current timestamp.
+     */
+     function changeDeadline(uint256 deadline_) external override returns (bool) {
+        require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), 'Exchange: sender is not owner');
+        require(deadline_ > block.timestamp, 'Exchange: deadline must be great than current timestamp');
+
+        _deadline = deadline_;
+
+        emit DeadlineChanged(deadline_);
+        
+        return true;
+     }
+
+
      /**
       * Withdraws `amount` of locked WINGS to a destination specified as `to`.
       *
@@ -209,5 +236,6 @@ contract Exchange is AccessControl, ReentrancyGuard, IExchange {
      */
     function _beforeSwap() internal view {
         require(!_stopped, 'Exchange: swapping is stopped');
+        require(block.timestamp <= _deadline, 'Exchange: swapping is rotten');
     }
 }
