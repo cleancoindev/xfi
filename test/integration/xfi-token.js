@@ -22,6 +22,7 @@ describe('XFI Token', () => {
     const minter     = web3.eth.accounts.create();
     const firstUser  = web3.eth.accounts.create();
     const secondUser = web3.eth.accounts.create();
+    const tmpUser    = web3.eth.accounts.create();
 
     const testRpc = TestRpc({
         accounts: [
@@ -48,6 +49,10 @@ describe('XFI Token', () => {
             {
                 balance: toWei('10'),
                 secretKey: secondUser.privateKey
+            },
+            {
+                balance: toWei('10'),
+                secretKey: tmpUser.privateKey
             }
         ],
         locked: false
@@ -268,6 +273,27 @@ describe('XFI Token', () => {
         toStr(firstLog.args.value).should.be.equal(amountToMint);
     });
 
+    it('minter mints tokens for tmp user and user burns it', async () => {
+        const totalSupplyBefore = toStr(await token.totalSupply.call());
+        const userBalanceBefore = toStr(await token.balanceOf.call(tmpUser.address));
+
+        userBalanceBefore.should.be.equal('0');
+
+        const amountToMint = toWei('10');
+        await token.mint(tmpUser.address, amountToMint, {from: minter.address});
+
+        const balanceAfter = toStr(await token.balanceOf.call(tmpUser.address));
+        balanceAfter.should.be.equal(amountToMint);
+
+        await token.burn(amountToMint, {from: tmpUser.address});
+        const totalSupplyAfter = toStr(await token.totalSupply.call());
+
+        totalSupplyBefore.should.be.equal(totalSupplyAfter);
+        const balanceAfterBurn = toStr(await token.balanceOf.call(tmpUser.address));
+
+        balanceAfterBurn.should.be.equal('0');
+    });
+
     it('doesn\'t allow to transfer tokens to zero address', async () => {
         try {
             await token.transfer(ZERO_ADDRESS, '1', {from: firstUser.address});
@@ -452,9 +478,158 @@ describe('XFI Token', () => {
         toStr(secondLog.args.value).should.be.equal('0');
     });
 
+    it('ex-owner can\'t stop transfers', async () => {
+        try {
+            await token.stopTransfers({from: tempOwner.address});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('XFIToken: sender is not owner');
+        }
+    });
+
+    it('owner can stop transfers', async () => {
+        const transferringIsStopped = await token.isTransferringStopped.call();
+
+        transferringIsStopped.should.be.false;
+
+        const txResult = await token.stopTransfers({from: creator.address});
+
+        const transferringIsStoppedAfter = await token.isTransferringStopped.call();
+
+        transferringIsStoppedAfter.should.be.true;
+
+        // Check events emitted during transaction.
+
+        txResult.logs.length.should.be.equal(1);
+
+        const firstLog = txResult.logs[0];
+
+        firstLog.event.should.be.equal('TransfersStopped');
+    });
+
+    it('doesn\'t allow to stop transfers when transfers are stopped', async () => {
+        try {
+            await token.stopTransfers({from: creator.address});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('XFIToken: transferring is stopped');
+        }
+    });
+
+    it('doesn\'t allow to transfer when transferring is stopped', async () => {
+        try {
+            await token.transfer(firstUser.address, '1', {from: secondUser.address});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('XFIToken: transferring is stopped');
+        }
+    });
+
+    it('doesn\'t allow to transfer from when transferring is stopped', async () => {
+        try {
+            await token.transferFrom(firstUser.address, secondUser.address, '1', {from: secondUser.address});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('XFIToken: transferring is stopped');
+        }
+    });
+
+    it('doesn\'t allow to mint when transferring is stopped', async () => {
+        try {
+            await token.mint(firstUser.address, '1', {from: minter.address});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('XFIToken: transferring is stopped');
+        }
+    });
+
+    it('doesn\'t allow to burn when transferring is stopped', async () => {
+        try {
+            await token.burn('1', {from: firstUser.address});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('XFIToken: transferring is stopped');
+        }
+    });
+
+    it('doesn\'t allow to burnFrom when transferring is stopped', async () => {
+        try {
+            await token.burnFrom(firstUser.address, '1', {from: minter.address});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('XFIToken: transferring is stopped');
+        }
+    });
+
+    it('ex-owner can\'t start transfers', async () => {
+        try {
+            await token.startTransfers({from: tempOwner.address});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('XFIToken: sender is not owner');
+        }
+    });
+
+    it('owner can start transfers', async () => {
+        const transferringIsStopped = await token.isTransferringStopped.call();
+
+        transferringIsStopped.should.be.true;
+
+        const txResult = await token.startTransfers({from: creator.address});
+
+        const transferringIsStoppedAfter = await token.isTransferringStopped.call();
+
+        transferringIsStoppedAfter.should.be.false;
+
+        // Check events emitted during transaction.
+
+        txResult.logs.length.should.be.equal(1);
+
+        const firstLog = txResult.logs[0];
+
+        firstLog.event.should.be.equal('TransfersStarted');
+    });
+
+    it('doesn\'t allow to start transfers when transferring is not stopped', async () => {
+        try {
+            await token.startTransfers({from: creator.address});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('XFIToken: transferring is not stopped');
+        }
+    });
+
+
     it('doesn\'t allow to burn zero address tokens', async () => {
         try {
-            await token.burn(ZERO_ADDRESS, '1', {from: minter.address});
+            await token.burnFrom(ZERO_ADDRESS, '1', {from: minter.address});
 
             throw Error('Should revert');
         } catch (error) {
@@ -467,7 +642,7 @@ describe('XFI Token', () => {
     it('minter burns user tokens', async () => {
         const amountToBurn = toWei('10');
 
-        const txResult = await token.burn(secondUser.address, amountToBurn, {from: minter.address});
+        const txResult = await token.burnFrom(secondUser.address, amountToBurn, {from: minter.address});
 
         const expectedSecondUserBalance = '0';
         const expectedTotalSupply       = '0';
@@ -524,7 +699,7 @@ describe('XFI Token', () => {
 
     it('ex-minter is no longer able to burn tokens', async () => {
         try {
-            await token.burn(secondUser.address, '1', {from: minter.address});
+            await token.burnFrom(secondUser.address, '1', {from: minter.address});
 
             throw Error('Should revert');
         } catch (error) {
