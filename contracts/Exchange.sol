@@ -191,7 +191,8 @@ contract Exchange is AccessControl, ReentrancyGuard, IExchange {
     /**
      * Change deadline timestamp.
      *
-     * Emit a {DeadlineChanged} event.
+     * Emits a {DeadlineChanged} event.
+     *
      * Requirements:
      * - Caller must have owner role.
      * - Deadline must be great than current timestamp.
