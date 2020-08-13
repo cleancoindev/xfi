@@ -663,7 +663,7 @@ describe('Ethereum XFI Exchange', () => {
         }
     });
 
-    it('shouldnt allow to change deadline without owner access role', async () => {
+    it('shouldn\'t allow to change deadline without owner access role', async () => {
         try {
             await exchange.changeDeadline('0', {from: maliciousUser.address});
 
