@@ -306,7 +306,7 @@ contract XFIToken is AccessControl, IXFIToken {
         emit Approval(owner, spender, amount);
     }
 
-        /**
+    /**
      * Starts all transfers.
      *
      * Emits a {TransfersStarted} event.
