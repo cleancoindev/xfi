@@ -37,6 +37,8 @@ contract XFIToken is AccessControl, IXFIToken {
 
     bytes32 public constant MINTER_ROLE = keccak256('minter');
 
+    bool private _stopped = false;
+
     /**
      * Sets {DEFAULT_ADMIN_ROLE} (alias `owner`) role for caller.
      */
@@ -206,10 +208,24 @@ contract XFIToken is AccessControl, IXFIToken {
      * - `account` cannot be the zero address.
      * - `account` must have at least `amount` tokens.
      */
-    function burn(address account, uint256 amount) external override returns (bool) {
+    function burnFrom(address account, uint256 amount) external override returns (bool) {
         require(hasRole(MINTER_ROLE, msg.sender), 'XFIToken: sender is not minter');
-
         _burn(account, amount);
+
+        return true;
+    }
+
+    /**
+     * Destroys `amount` tokens from sender, reducing the
+     * total supply.
+     *
+     * Emits a {Transfer} event with `to` set to the zero address.
+     *
+     * Requirements:
+     * - `account` must have at least `amount` tokens.
+     */
+    function burn(uint256 amount) external override returns (bool) {
+        _burn(msg.sender, amount);
 
         return true;
     }
@@ -224,10 +240,12 @@ contract XFIToken is AccessControl, IXFIToken {
      * - `sender` cannot be the zero address.
      * - `recipient` cannot be the zero address.
      * - `sender` must have a balance of at least `amount`.
+     * - Contract isn't stopped.
      */
     function _transfer(address sender, address recipient, uint256 amount) internal {
         require(sender != address(0), 'XFIToken: transfer from the zero address');
         require(recipient != address(0), 'XFIToken: transfer to the zero address');
+        require(!_stopped, 'XFIToken: transferring is stopped');
 
         _balances[sender] = _balances[sender].sub(amount, 'XFIToken: transfer amount exceeds balance');
         _balances[recipient] = _balances[recipient].add(amount);
@@ -245,6 +263,7 @@ contract XFIToken is AccessControl, IXFIToken {
      */
     function _mint(address account, uint256 amount) internal {
         require(account != address(0), 'XFIToken: mint to the zero address');
+        require(!_stopped, 'XFIToken: transferring is stopped');
 
         _totalSupply = _totalSupply.add(amount);
         _balances[account] = _balances[account].add(amount);
@@ -263,6 +282,7 @@ contract XFIToken is AccessControl, IXFIToken {
      */
     function _burn(address account, uint256 amount) internal {
         require(account != address(0), 'XFIToken: burn from the zero address');
+        require(!_stopped, 'XFIToken: transferring is stopped');
 
         _balances[account] = _balances[account].sub(amount, 'XFIToken: burn amount exceeds balance');
         _totalSupply = _totalSupply.sub(amount);
@@ -284,5 +304,52 @@ contract XFIToken is AccessControl, IXFIToken {
 
         _allowances[owner][spender] = amount;
         emit Approval(owner, spender, amount);
+    }
+
+    /**
+     * Starts all transfers.
+     *
+     * Emits a {TransfersStarted} event.
+     *
+     * Requirements:
+     * - Caller must have owner role.
+     * - Contract is stopped.
+     */
+    function startTransfers() external override returns (bool) {
+        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), 'XFIToken: sender is not owner');
+        require(_stopped, 'XFIToken: transferring is not stopped');
+
+        _stopped = false;
+
+        emit TransfersStarted();
+
+        return true;
+    }
+
+    /**
+     * Stops all transfers.
+     *
+     * Emits a {TransfersStopped} event.
+     *
+     * Requirements:
+     * - Caller must have owner role.
+     * - Contract isn't stopped.
+     */
+    function stopTransfers() external override returns (bool) {
+        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), 'XFIToken: sender is not owner');
+        require(!_stopped, 'XFIToken: transferring is stopped');
+
+        _stopped = true;
+
+        emit TransfersStopped();
+
+        return true;
+    }
+
+    /**
+     * Returns whether transfering is stopped.
+     */
+    function isTransferringStopped() external view override returns (bool) {
+        return _stopped;
     }
 }

@@ -14,6 +14,18 @@ const TEST_RPC_PORT = +process.env.TEST_RPC_PORT || 9545;
 
 const web3 = new Web3(`http://localhost:${TEST_RPC_PORT}`);
 
+const increaseTime = addSeconds => {
+    return new Promise((resolve, reject) => {
+        web3.currentProvider.send({
+            jsonrpc: "2.0", 
+            method: "evm_increaseTime", 
+            params: [addSeconds], id: 0
+        }, (err, result) => {
+            err? reject(err) : resolve(result);   
+        });
+    });
+}
+
 const {toStr, toWei} = helpers;
 const {ZERO_ADDRESS} = helpers;
 
@@ -60,6 +72,10 @@ describe('Ethereum XFI Exchange', () => {
         locked: false
     });
 
+    const now       = Math.floor(new Date().getTime() / 1000);
+    const sixMonths = 15780000;
+    const deadline  = (now + sixMonths).toString();
+
     let wingsToken;
     let xfiToken;
     let uniswapRouter;
@@ -98,7 +114,7 @@ describe('Ethereum XFI Exchange', () => {
         const Exchange     = contract({abi: ExchangeJson.abi, unlinked_binary: ExchangeJson.bytecode});
         Exchange.setProvider(web3Provider);
 
-        exchange = await Exchange.new(wingsToken.address, xfiToken.address, uniswapRouter.address, {from: creator.address});
+        exchange = await Exchange.new(wingsToken.address, xfiToken.address, uniswapRouter.address, deadline, {from: creator.address});
     });
 
     it('total supply of WINGS is valid', async () => {
@@ -121,6 +137,12 @@ describe('Ethereum XFI Exchange', () => {
         wingsTokenAddress.should.be.equal(wingsToken.address);
         xfiTokenAddress.should.be.equal(xfiToken.address);
         uniswapRouterAddress.should.be.equal(uniswapRouter.address);
+    });
+
+    it('deadline is valid', async () => {
+        const exchangeDeadline = toStr(await exchange.deadline.call());
+
+        exchangeDeadline.should.be.equal(deadline);
     });
 
     it('creator is owner', async () => {
@@ -581,6 +603,75 @@ describe('Ethereum XFI Exchange', () => {
             if (!error.reason) { throw error; }
 
             error.reason.should.be.equal('Exchange: swapping is not stopped');
+        }
+    });
+
+    it('move time after deadline', async () => {
+        await increaseTime(sixMonths + 100);
+    });
+
+    it('shouldn\'t allow to swap WINGS afer deadline', async () => {
+        try {
+            await exchange.swapWINGSForXFI('1', {from: user.address});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('Exchange: swapping has expired');
+        }
+    });
+
+    it('shouldn\'t allow to swap ETH afer deadline', async () => {
+        try {
+            await exchange.swapETHForXFI('1', {from: user.address});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('Exchange: swapping has expired');
+        }
+    })
+
+    it('change deadline', async () => {
+        const newDeadline = (parseInt(deadline) + sixMonths).toString();
+
+        // Start swaps.
+        const txResult = await exchange.changeDeadline(newDeadline, {from: creator.address});
+
+        // Check events emitted during transaction.
+        txResult.logs.length.should.be.equal(1);
+
+        const firstLog = txResult.logs[0];
+
+        firstLog.event.should.be.equal('DeadlineChanged');
+
+        const exchangeDeadline = toStr(await exchange.deadline.call());
+        exchangeDeadline.should.be.equal(newDeadline); 
+    });
+
+    it('shouldn\'t allow to change to zero deadline', async() => {
+        try {
+            await exchange.changeDeadline('0', {from: creator.address});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('Exchange: deadline must be great than current timestamp');
+        }
+    });
+
+    it('shouldn\'t allow to change deadline without owner access role', async () => {
+        try {
+            await exchange.changeDeadline('0', {from: maliciousUser.address});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('Exchange: sender is not owner');
         }
     });
 
