@@ -13,8 +13,8 @@ module.exports = async function deploy(deployer) {
     const CREATOR_ADDRESS           = process.env.CREATOR_ADDRESS;
     const WINGS_TOKEN_ADDRESS       = process.env.WINGS_TOKEN_ADDRESS;
     const UNISWAP_V2_ROUTER_ADDRESS = process.env.UNISWAP_V2_ROUTER_ADDRESS;
-    const XFI_TOKEN_ADDRESS = process.env.XFI_TOKEN_ADDRESS;
-    const DEADLINE = process.env.DEADLINE;
+    const XFI_TOKEN_ADDRESS         = process.env.XFI_TOKEN_ADDRESS;
+    const DEADLINE                  = process.env.DEADLINE;
 
     if (!CREATOR_ADDRESS) {
         throw 'CREATOR_ADDRESS is missing';
