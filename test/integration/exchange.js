@@ -651,7 +651,7 @@ describe('Ethereum XFI Exchange', () => {
         exchangeDeadline.should.be.equal(newDeadline); 
     });
 
-    it('shouldnt allow to change to zero deadline', async() => {
+    it('shouldn\'t allow to change to zero deadline', async() => {
         try {
             await exchange.changeDeadline('0', {from: creator.address});
 
