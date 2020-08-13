@@ -237,6 +237,6 @@ contract Exchange is AccessControl, ReentrancyGuard, IExchange {
      */
     function _beforeSwap() internal view {
         require(!_stopped, 'Exchange: swapping is stopped');
-        require(block.timestamp <= _deadline, 'Exchange: swapping is rotten');
+        require(block.timestamp <= _deadline, 'Exchange: swapping has expired');
     }
 }
