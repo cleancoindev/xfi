@@ -618,7 +618,7 @@ describe('Ethereum XFI Exchange', () => {
         } catch (error) {
             if (!error.reason) { throw error; }
 
-            error.reason.should.be.equal('Exchange: swapping is rotten');
+            error.reason.should.be.equal('Exchange: swapping has expired');
         }
     });
 
