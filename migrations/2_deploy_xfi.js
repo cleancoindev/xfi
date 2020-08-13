@@ -16,5 +16,5 @@ module.exports = async function deploy(deployer) {
     }
 
     // Deploy the XFI Token.
-    await deployer.deploy(XfiToken);
+    await deployer.deploy(XfiToken, {from: CREATOR_ADDRESS});
 };
