@@ -72,9 +72,9 @@ describe('Ethereum XFI Exchange', () => {
         locked: false
     });
 
-    const now = Math.floor(new Date().getTime() / 1000);
+    const now       = Math.floor(new Date().getTime() / 1000);
     const sixMonths = 15780000;
-    const deadline = (now + sixMonths).toString();
+    const deadline  = (now + sixMonths).toString();
 
     let wingsToken;
     let xfiToken;
