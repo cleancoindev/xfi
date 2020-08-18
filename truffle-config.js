@@ -2,7 +2,7 @@
 
 require('dotenv').config();
 
-const { getHDProvider } = require('./provider.js');
+const {getProvider} = require('provider');
 
 /**
  * Truffle configuration object.
@@ -24,7 +24,7 @@ module.exports = {
         },
         ropsten: {
             provider: () => {
-                return getHDProvider();
+                return getProvider();
             },
             network_id: 3,
             gas: 8000000,
@@ -32,7 +32,7 @@ module.exports = {
         },
         mainnet: {
             provider: () => {
-                return getHDProvider();
+                return getProvider();
             },
             network_id: 1,
             gas: 2000000,
