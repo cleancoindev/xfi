@@ -49,7 +49,7 @@ describe('Distribution math', () => {
     it('100 million', async () => {
         let daysSinceStart = 0;
 
-        const amount = toWei('100000000');
+        // const amount = toWei('100000000');
         // const amount = toWei('10000000');
         // const amount = toWei('1000000');
         // const amount = toWei('100000');
@@ -59,7 +59,7 @@ describe('Distribution math', () => {
         // const amount = toWei('10');
         // const amount = toWei('1');
         // const amount = toWei('0.1');
-        // const amount = '182';
+        const amount = '200';
         // Math errors below 182 are expected.
 
         while (daysSinceStart < 182) {
@@ -80,6 +80,8 @@ describe('Distribution math', () => {
             amountConverted.should.be.equal(expectedAmountConverted);
 
             const amountReverseConverted = toStr(await token.convertAmountUsingReverseRatio.call(amount));
+
+            console.log('Amount reverse converted:', amountReverseConverted, '|', expectedReverseAmountConverted);
 
             amountReverseConverted.should.be.equal(expectedReverseAmountConverted);
 

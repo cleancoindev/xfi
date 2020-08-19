@@ -13,6 +13,8 @@ const web3 = new Web3(WEB3_PROVIDER_URL);
 const {toStr, toWei} = helpers;
 const {ZERO_ADDRESS} = helpers;
 
+const ONE_DAY = 86400;
+
 describe('XFI Token', () => {
     const START_DATE = Math.floor((Date.now() / 1000) + 3600).toString();
 
@@ -81,7 +83,7 @@ describe('XFI Token', () => {
         await moveTime(vestingDeadline - now);
     });
 
-    it('correct values of the constants', async () => {
+    it('correct values of the default constants', async () => {
         const decimals = (await token.decimals.call()).toNumber();
         const name     = await token.name.call();
         const symbol   = await token.symbol.call();
@@ -89,6 +91,22 @@ describe('XFI Token', () => {
         decimals.should.be.equal(18);
         name.should.be.equal('dfinance');
         symbol.should.be.equal('XFI');
+    });
+
+    it('correct maximum total supply', async () => {
+        const expectedMaxTotalSupply = toWei('100000000');
+
+        const maxTotalSupply = toStr(await token.MAX_TOTAL_SUPPLY.call());
+
+        maxTotalSupply.should.be.equal(expectedMaxTotalSupply);
+    });
+
+    it('correct vesting duration', async () => {
+        const expectedVestingDuration = toStr(182 * ONE_DAY);
+
+        const vestingDuration = toStr(await token.VESTING_DURATION.call());
+
+        vestingDuration.should.be.equal(expectedVestingDuration);
     });
 
     it('total supply is zero', async () => {
@@ -713,6 +731,52 @@ describe('XFI Token', () => {
 
             error.reason.should.be.equal('XFIToken: sender is not minter');
         }
+    });
+
+    it('doesn\'t allow to withdraw reserve when it\'s frozen', async () => {
+        try {
+            await token.withdrawReserve(creator.address, {from: creator.address});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('XFIToken: reserve is frozen');
+        }
+    });
+
+    it('move time to the moment when reserve is available for withdrawal', async () => {
+        const reserveFrozenUntil = Number(await token.reserveFrozenUntil.call());
+
+        const secondsToMove = reserveFrozenUntil - Math.floor(Date.now() / 1000) + 1;
+
+        await moveTime(secondsToMove);
+    });
+
+    it('doesn\'t allow to withdraw reserve without the owner access role', async () => {
+        try {
+            await token.withdrawReserve(firstUser.address, {from: firstUser.address});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('XFIToken: sender is not owner');
+        }
+    });
+
+    it('withdraw reserve', async () => {
+        const reserveAmountBefore = toStr(await token.getReserveAmount.call());
+
+        await token.withdrawReserve(creator.address, {from: creator.address});
+
+        const reserveAmountAfter = toStr(await token.getReserveAmount.call());
+
+        reserveAmountAfter.should.be.equal('0');
+
+        const creatorBalance = toStr(await token.balanceOf.call(creator.address));
+
+        creatorBalance.should.be.equal(reserveAmountBefore);
     });
 
     it('(last) owner renounces', async () => {

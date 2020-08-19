@@ -414,10 +414,17 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
      }
 
      /**
+      * Returns total vested balance of the `account`.
+      */
+     function totalVestedBalanceOf(address account) public view override returns (uint256) {
+         return convertAmountUsingRatio(_vestingBalances[account]);
+     }
+
+     /**
       * Returns unspent vested balance of the `account`.
       */
      function unspentVestedBalanceOf(address account) public view override returns (uint256) {
-         return convertAmountUsingRatio(_vestingBalances[account])
+         return totalVestedBalanceOf(account)
             .sub(_spentVestedBalances[account]);
      }
 

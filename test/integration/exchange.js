@@ -12,8 +12,9 @@ const bigInt = require('big-integer');
 
 const web3 = new Web3(WEB3_PROVIDER_URL);
 
-const {toStr, toWei} = helpers;
+const {toStr}        = helpers;
 const {ZERO_ADDRESS} = helpers;
+const {toWei}        = web3.utils;
 
 describe('Ethereum XFI Exchange', () => {
     const START_DATE                         = Math.floor((Date.now() / 1000) + 3600).toString();
@@ -298,7 +299,7 @@ describe('Ethereum XFI Exchange', () => {
         uniswapRouterEthBalance.should.be.equal(uniswapRouterEthBalance);
     });
 
-    xit('estimate amounts of swap WINGS-XFI', async () => {
+    it('estimate amounts of swap WINGS-XFI', async () => {
         const amountIn = toWei('100');
 
         const amounts = await exchange.estimateSwapWINGSForXFI.call(amountIn);
@@ -313,7 +314,7 @@ describe('Ethereum XFI Exchange', () => {
         xfiOut.should.be.equal(expectedXfiOut);
     });
 
-    xit('estimate amounts of swap ETH-XFI', async () => {
+    it('estimate amounts of swap ETH-XFI', async () => {
         const amountIn = toWei('1');
 
         const amounts = await exchange.estimateSwapETHForXFI.call(amountIn);
@@ -326,6 +327,60 @@ describe('Ethereum XFI Exchange', () => {
 
         ethIn.should.be.equal(expectedEthIn);
         xfiOut.should.be.equal(expectedXfiOut);
+    });
+
+    it('doesn\'t allow to set gas price without the owner access role', async () => {
+        const maxGasPrice = toWei('100', 'gwei');
+
+        try {
+            await exchange.setMaxGasPrice(maxGasPrice, {from: maliciousUser.address});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('Exchange: sender is not owner');
+        }
+    });
+
+    it('set gas price', async () => {
+        const maxGasPriceBefore = toStr(await exchange.maxGasPrice.call());
+
+        maxGasPriceBefore.should.be.equal('0');
+
+        const maxGasPrice = toWei('100', 'gwei');
+
+        await exchange.setMaxGasPrice(maxGasPrice, {from: creator.address});
+
+        const maxGasPriceAfter = toStr(await exchange.maxGasPrice.call());
+
+        maxGasPriceAfter.should.be.equal(maxGasPrice);
+    });
+
+    it('doesn\'t allow to swap when gas price is higher than the limit', async () => {
+        // Amount of WINGS to swap.
+        const amountIn = toWei('100');
+        const gasPrice = toWei('200', 'gwei');
+
+        try {
+            await exchange.swapWINGSForXFI(amountIn, {from: user.address, gasPrice});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('Exchange: gas price exceeds the limit');
+        }
+    });
+
+    it('unset gas price', async () => {
+        const maxGasPrice = '0';
+
+        await exchange.setMaxGasPrice(maxGasPrice, {from: creator.address});
+
+        const maxGasPriceAfter = toStr(await exchange.maxGasPrice.call());
+
+        maxGasPriceAfter.should.be.equal(maxGasPrice);
     });
 
     xit('swap WINGS-XFI', async () => {
@@ -475,7 +530,7 @@ describe('Ethereum XFI Exchange', () => {
         toStr(firstLog.args.amountOut).should.be.equal(amountOutMin);
     });
 
-    xit('doesn\'t allow ex-owner to stop swaps without owner access role', async () => {
+    it('doesn\'t allow ex-owner to stop swaps without owner access role', async () => {
         try {
             await exchange.stopSwaps({from: tempOwner.address});
 
@@ -487,7 +542,7 @@ describe('Ethereum XFI Exchange', () => {
         }
     });
 
-    xit('stop swaps', async () => {
+    it('stop swaps', async () => {
         // Check the state of swaps before.
         const swappingIsStopped = await exchange.isSwappingStopped.call();
 
@@ -510,7 +565,7 @@ describe('Ethereum XFI Exchange', () => {
         firstLog.event.should.be.equal('SwapsStopped');
     });
 
-    xit('doesn\'t allow to stop swaps when swapping is stopped', async () => {
+    it('doesn\'t allow to stop swaps when swapping is stopped', async () => {
         try {
             await exchange.stopSwaps({from: creator.address});
 
@@ -522,7 +577,7 @@ describe('Ethereum XFI Exchange', () => {
         }
     });
 
-    xit('doesn\'t allow to swap WINGS-XFI (swapping is stopped)', async () => {
+    it('doesn\'t allow to swap WINGS-XFI (swapping is stopped)', async () => {
         try {
             await exchange.swapWINGSForXFI('1', {from: user.address});
 
@@ -534,7 +589,7 @@ describe('Ethereum XFI Exchange', () => {
         }
     });
 
-    xit('doesn\'t allow to swap ETH-XFI (swapping is stopped)', async () => {
+    it('doesn\'t allow to swap ETH-XFI (swapping is stopped)', async () => {
         try {
             await exchange.swapETHForXFI('1', {from: user.address});
 
@@ -546,7 +601,7 @@ describe('Ethereum XFI Exchange', () => {
         }
     });
 
-    xit('doesn\'t allow ex-owner to start swaps without owner access role', async () => {
+    it('doesn\'t allow ex-owner to start swaps without owner access role', async () => {
         try {
             await exchange.startSwaps({from: tempOwner.address});
 
@@ -558,7 +613,7 @@ describe('Ethereum XFI Exchange', () => {
         }
     });
 
-    xit('start swaps', async () => {
+    it('start swaps', async () => {
         // Check the state of swaps before.
         const swappingIsStopped = await exchange.isSwappingStopped.call();
 
@@ -581,7 +636,7 @@ describe('Ethereum XFI Exchange', () => {
         firstLog.event.should.be.equal('SwapsStarted');
     });
 
-    xit('doesn\'t allow to start swaps when swapping is not stopped', async () => {
+    it('doesn\'t allow to start swaps when swapping is not stopped', async () => {
         try {
             await exchange.startSwaps({from: creator.address});
 
@@ -593,11 +648,11 @@ describe('Ethereum XFI Exchange', () => {
         }
     });
 
-    xit('move time after deadline', async () => {
+    it('move time after deadline', async () => {
         await moveTime(sixMonths + 100);
     });
 
-    xit('shouldn\'t allow to swap WINGS afer deadline', async () => {
+    it('shouldn\'t allow to swap WINGS afer deadline', async () => {
         try {
             await exchange.swapWINGSForXFI('1', {from: user.address});
 
@@ -609,7 +664,7 @@ describe('Ethereum XFI Exchange', () => {
         }
     });
 
-    xit('shouldn\'t allow to swap ETH afer deadline', async () => {
+    it('shouldn\'t allow to swap ETH afer deadline', async () => {
         try {
             await exchange.swapETHForXFI('1', {from: user.address});
 
@@ -662,7 +717,7 @@ describe('Ethereum XFI Exchange', () => {
         }
     });
 
-    xit('doesn\'t allow to withdraw WINGS without owner access role', async () => {
+    it('doesn\'t allow to withdraw WINGS without owner access role', async () => {
         try {
             await exchange.startSwaps({from: maliciousUser.address});
 
@@ -674,7 +729,7 @@ describe('Ethereum XFI Exchange', () => {
         }
     });
 
-    xit('doesn\'t allow to withdraw WINGS to the zero address', async () => {
+    it('doesn\'t allow to withdraw WINGS to the zero address', async () => {
         try {
             await exchange.withdrawWINGS(ZERO_ADDRESS, '1', {from: creator.address});
 
@@ -686,13 +741,13 @@ describe('Ethereum XFI Exchange', () => {
         }
     });
 
-    xit('fund the Exchange with WINGS to test WINGS withdrawal', async () => {
+    it('fund the Exchange with WINGS to test WINGS withdrawal', async () => {
         const amountToTransfer = toWei('100');
 
         await wingsToken.transfer(exchange.address, amountToTransfer, {from: creator.address});
     });
 
-    xit('doesn\'t allow to withdraw more WINGS than the contract possess', async () => {
+    it('doesn\'t allow to withdraw more WINGS than the contract possess', async () => {
         try {
             await exchange.withdrawWINGS(creator.address, WINGS_TOTAL_SUPPLY, {from: creator.address});
 
