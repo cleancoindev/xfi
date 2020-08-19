@@ -1,4 +1,4 @@
-/* global Web3 contract helpers TestRpc */
+/* global Web3 contract helpers TestRpc rpc WEB3_PROVIDER_URL TEST_RPC_PORT */
 
 /**
  * Integration test which covers functionality of XFI Token.
@@ -8,15 +8,13 @@
 
 'use strict';
 
-const TEST_RPC_PORT = +process.env.TEST_RPC_PORT || 9545;
-
-const web3 = new Web3(`http://localhost:${TEST_RPC_PORT}`);
+const web3 = new Web3(WEB3_PROVIDER_URL);
 
 const {toStr, toWei} = helpers;
 const {ZERO_ADDRESS} = helpers;
 
 describe('XFI Token', () => {
-    const START_DATE = Math.floor((Date.now() + 3600) / 1000).toString();
+    const START_DATE = Math.floor((Date.now() / 1000) + 3600).toString();
 
     const creator    = web3.eth.accounts.create();
     const newOwner   = web3.eth.accounts.create();
@@ -67,13 +65,20 @@ describe('XFI Token', () => {
     });
 
     before('deploy', async () => {
-        const web3Provider = new Web3.providers.HttpProvider(`http://localhost:${TEST_RPC_PORT}`);
+        const web3Provider = new Web3.providers.HttpProvider(WEB3_PROVIDER_URL);
 
         const TokenJson = require('build/contracts/XFIToken.json');
         const Token     = contract({abi: TokenJson.abi, unlinked_binary: TokenJson.bytecode});
         Token.setProvider(web3Provider);
 
         token = await Token.new(START_DATE, {from: creator.address});
+    });
+
+    it('move time to the end of vesting period', async () => {
+        const now             = Math.floor(Date.now() / 1000);
+        const vestingDeadline = await token.vestingDeadline.call();
+
+        await moveTime(vestingDeadline - now);
     });
 
     it('correct values of the constants', async () => {
@@ -246,7 +251,7 @@ describe('XFI Token', () => {
         }
     });
 
-    xit('minter mints tokens for first user', async () => {
+    it('minter mints tokens for first user', async () => {
         const firstUserBalanceBefore = toStr(await token.balanceOf.call(firstUser.address));
         const totalSupplyBefore      = toStr(await token.totalSupply.call());
 
@@ -275,7 +280,7 @@ describe('XFI Token', () => {
         toStr(firstLog.args.value).should.be.equal(amountToMint);
     });
 
-    xit('minter mints tokens for tmp user and user burns it', async () => {
+    it('minter mints tokens for tmp user and user burns it', async () => {
         const totalSupplyBefore = toStr(await token.totalSupply.call());
         const userBalanceBefore = toStr(await token.balanceOf.call(tmpUser.address));
 
@@ -296,7 +301,7 @@ describe('XFI Token', () => {
         balanceAfterBurn.should.be.equal('0');
     });
 
-    xit('doesn\'t allow to transfer tokens to zero address', async () => {
+    it('doesn\'t allow to transfer tokens to zero address', async () => {
         try {
             await token.transfer(ZERO_ADDRESS, '1', {from: firstUser.address});
 
@@ -308,7 +313,7 @@ describe('XFI Token', () => {
         }
     });
 
-    xit('first user can transfer tokens to second user', async () => {
+    it('first user can transfer tokens to second user', async () => {
         const amountToTransfer = toWei('5');
 
         const txResult = await token.transfer(secondUser.address, amountToTransfer, {from: firstUser.address});
@@ -337,7 +342,7 @@ describe('XFI Token', () => {
         toStr(firstLog.args.value).should.be.equal(amountToTransfer);
     });
 
-    xit('doesn\'t allow to approve spending of tokens to a zero address', async () => {
+    it('doesn\'t allow to approve spending of tokens to a zero address', async () => {
         try {
             await token.approve(ZERO_ADDRESS, '1', {from: firstUser.address});
 
@@ -349,7 +354,7 @@ describe('XFI Token', () => {
         }
     });
 
-    xit('first user approves second user to use his tokens', async () => {
+    it('first user approves second user to use his tokens', async () => {
         const amountToApprove = toWei('5');
 
         const txResult = await token.approve(secondUser.address, amountToApprove, {from: firstUser.address});
@@ -372,7 +377,7 @@ describe('XFI Token', () => {
         toStr(firstLog.args.value).should.be.equal(amountToApprove);
     });
 
-    xit('doesn\'t allow to decrease allowance of zero address', async () => {
+    it('doesn\'t allow to decrease allowance of zero address', async () => {
         try {
             await token.decreaseAllowance(ZERO_ADDRESS, '1', {from: firstUser.address});
 
@@ -384,7 +389,7 @@ describe('XFI Token', () => {
         }
     });
 
-    xit('first user can descrease allowance', async () => {
+    it('first user can descrease allowance', async () => {
         const delta = toWei('1');
 
         await token.decreaseAllowance(secondUser.address, delta, {from: firstUser.address});
@@ -396,7 +401,7 @@ describe('XFI Token', () => {
         secondUserAllowance.should.be.equal(expectedSecondUserAllowance);
     });
 
-    xit('doesn\'t allow to increase allowance of zero address', async () => {
+    it('doesn\'t allow to increase allowance of zero address', async () => {
         try {
             await token.increaseAllowance(ZERO_ADDRESS, '1', {from: firstUser.address});
 
@@ -408,7 +413,7 @@ describe('XFI Token', () => {
         }
     });
 
-    xit('first user can increase allowance', async () => {
+    it('first user can increase allowance', async () => {
         const delta = toWei('1');
 
         await token.increaseAllowance(secondUser.address, delta, {from: firstUser.address});
@@ -420,7 +425,7 @@ describe('XFI Token', () => {
         secondUserAllowance.should.be.equal(expectedSecondUserAllowance);
     });
 
-    xit('doesn\'t allow to transfer from zero address', async () => {
+    it('doesn\'t allow to transfer from zero address', async () => {
         try {
             await token.transferFrom(ZERO_ADDRESS, secondUser.address, '1', {from: secondUser.address});
 
@@ -432,7 +437,7 @@ describe('XFI Token', () => {
         }
     });
 
-    xit('doesn\'t allow to transfer to zero address', async () => {
+    it('doesn\'t allow to transfer to zero address', async () => {
         try {
             await token.transferFrom(firstUser.address, ZERO_ADDRESS, '1', {from: secondUser.address});
 
@@ -444,7 +449,7 @@ describe('XFI Token', () => {
         }
     });
 
-    xit('second user transfers tokens from first user', async () => {
+    it('second user transfers tokens from first user', async () => {
         const amountToTransfer = toWei('5');
 
         const txResult = await token.transferFrom(firstUser.address, secondUser.address, amountToTransfer, {from: secondUser.address});
@@ -480,7 +485,7 @@ describe('XFI Token', () => {
         toStr(secondLog.args.value).should.be.equal('0');
     });
 
-    xit('ex-owner can\'t stop transfers', async () => {
+    it('ex-owner can\'t stop transfers', async () => {
         try {
             await token.stopTransfers({from: tempOwner.address});
 
@@ -492,7 +497,7 @@ describe('XFI Token', () => {
         }
     });
 
-    xit('owner can stop transfers', async () => {
+    it('owner can stop transfers', async () => {
         const transferringIsStopped = await token.isTransferringStopped.call();
 
         transferringIsStopped.should.be.false;
@@ -512,7 +517,7 @@ describe('XFI Token', () => {
         firstLog.event.should.be.equal('TransfersStopped');
     });
 
-    xit('doesn\'t allow to stop transfers when transfers are stopped', async () => {
+    it('doesn\'t allow to stop transfers when transfers are stopped', async () => {
         try {
             await token.stopTransfers({from: creator.address});
 
@@ -524,7 +529,7 @@ describe('XFI Token', () => {
         }
     });
 
-    xit('doesn\'t allow to transfer when transferring is stopped', async () => {
+    it('doesn\'t allow to transfer when transferring is stopped', async () => {
         try {
             await token.transfer(firstUser.address, '1', {from: secondUser.address});
 
@@ -536,7 +541,7 @@ describe('XFI Token', () => {
         }
     });
 
-    xit('doesn\'t allow to transfer from when transferring is stopped', async () => {
+    it('doesn\'t allow to transfer from when transferring is stopped', async () => {
         try {
             await token.transferFrom(firstUser.address, secondUser.address, '1', {from: secondUser.address});
 
@@ -548,7 +553,7 @@ describe('XFI Token', () => {
         }
     });
 
-    xit('doesn\'t allow to mint when transferring is stopped', async () => {
+    it('doesn\'t allow to mint when transferring is stopped', async () => {
         try {
             await token.mint(firstUser.address, '1', {from: minter.address});
 
@@ -560,7 +565,7 @@ describe('XFI Token', () => {
         }
     });
 
-    xit('doesn\'t allow to burn when transferring is stopped', async () => {
+    it('doesn\'t allow to burn when transferring is stopped', async () => {
         try {
             await token.burn('1', {from: firstUser.address});
 
@@ -572,7 +577,7 @@ describe('XFI Token', () => {
         }
     });
 
-    xit('doesn\'t allow to burnFrom when transferring is stopped', async () => {
+    it('doesn\'t allow to burnFrom when transferring is stopped', async () => {
         try {
             await token.burnFrom(firstUser.address, '1', {from: minter.address});
 
@@ -584,7 +589,7 @@ describe('XFI Token', () => {
         }
     });
 
-    xit('ex-owner can\'t start transfers', async () => {
+    it('ex-owner can\'t start transfers', async () => {
         try {
             await token.startTransfers({from: tempOwner.address});
 
@@ -596,7 +601,7 @@ describe('XFI Token', () => {
         }
     });
 
-    xit('owner can start transfers', async () => {
+    it('owner can start transfers', async () => {
         const transferringIsStopped = await token.isTransferringStopped.call();
 
         transferringIsStopped.should.be.true;
@@ -616,7 +621,7 @@ describe('XFI Token', () => {
         firstLog.event.should.be.equal('TransfersStarted');
     });
 
-    xit('doesn\'t allow to start transfers when transferring is not stopped', async () => {
+    it('doesn\'t allow to start transfers when transferring is not stopped', async () => {
         try {
             await token.startTransfers({from: creator.address});
 
@@ -628,8 +633,7 @@ describe('XFI Token', () => {
         }
     });
 
-
-    xit('doesn\'t allow to burn zero address tokens', async () => {
+    it('doesn\'t allow to burn zero address tokens', async () => {
         try {
             await token.burnFrom(ZERO_ADDRESS, '1', {from: minter.address});
 
@@ -641,7 +645,7 @@ describe('XFI Token', () => {
         }
     });
 
-    xit('minter burns user tokens', async () => {
+    it('minter burns user tokens', async () => {
         const amountToBurn = toWei('10');
 
         const txResult = await token.burnFrom(secondUser.address, amountToBurn, {from: minter.address});
@@ -667,7 +671,7 @@ describe('XFI Token', () => {
         toStr(firstLog.args.value).should.be.equal(amountToBurn);
     });
 
-    xit('remove (last) minter', async () => {
+    it('remove (last) minter', async () => {
         const minterRole = await token.MINTER_ROLE.call();
 
         await token.revokeRole(minterRole, minter.address, {from: creator.address});
@@ -687,7 +691,7 @@ describe('XFI Token', () => {
         }
     });
 
-    xit('ex-minter is no longer able to mint new tokens', async () => {
+    it('ex-minter is no longer able to mint new tokens', async () => {
         try {
             await token.mint(secondUser.address, '1', {from: minter.address});
 
@@ -699,7 +703,7 @@ describe('XFI Token', () => {
         }
     });
 
-    xit('ex-minter is no longer able to burn tokens', async () => {
+    it('ex-minter is no longer able to burn tokens', async () => {
         try {
             await token.burnFrom(secondUser.address, '1', {from: minter.address});
 
@@ -711,7 +715,7 @@ describe('XFI Token', () => {
         }
     });
 
-    xit('(last) owner renounces', async () => {
+    it('(last) owner renounces', async () => {
         const ownerRole = await token.DEFAULT_ADMIN_ROLE.call();
 
         const txResult = await token.renounceRole(ownerRole, creator.address, {from: creator.address});
@@ -746,3 +750,14 @@ describe('XFI Token', () => {
         testRpc.stop();
     });
 });
+
+/**
+ * Move Test RPC time.
+ *
+ * @param  {Number}  seconds
+ * @return {Promise}
+ */
+async function moveTime(seconds) {
+    await rpc('evm_increaseTime', [seconds]);
+    await rpc('evm_mine');
+}
