@@ -26,6 +26,8 @@ interface IXFIToken is IERC20 {
     function vestingEndsInDays() external view returns (uint256);
     function convertAmountUsingRatio(uint256 amount) external view returns (uint256);
     function convertAmountUsingReverseRatio(uint256 amount) external view returns (uint256);
+    function unspentVestedBalanceOf(address account) external view returns (uint256);
+    function spentVestedBalanceOf(address account) external view returns (uint256);
 
     function mint(address account, uint256 amount) external returns (bool);
     function burn(uint256 amount) external returns (bool);

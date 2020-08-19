@@ -44,7 +44,11 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
      */
     uint256 public constant override RESERVE_FREEZE_PERIOD = 730 days; // Around 2 years.
 
+    mapping (address => uint256) private _vestingBalances;
+
     mapping (address => uint256) private _balances;
+
+    mapping (address => uint256) private _spentVestedBalances;
 
     mapping (address => mapping (address => uint256)) private _allowances;
 
@@ -184,23 +188,13 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
      * Destroys `amount` tokens from `account`, reducing the
      * total supply.
      *
-     * NOTE This method burns the absolute token amount ignoring the vesting
-     * period.
-     *
      * Emits a {Transfer} event with `to` set to the zero address.
      *
      * Requirements:
      * - Caller must have minter role.
-     * - `account` cannot be the zero address.
-     * - `account` must have at least `amount` tokens.
-     * - `account` cannot be the zero address.
-     * - `account` must have at least `amount` tokens.
      */
     function burnFrom(address account, uint256 amount) external override returns (bool) {
         require(hasRole(MINTER_ROLE, msg.sender), 'XFIToken: sender is not minter');
-        require(account != address(0), 'XFIToken: burn from the zero address');
-        require(!_stopped, 'XFIToken: transferring is stopped');
-        require(_balances[account] >= amount, 'XFIToken: burn amount exceeds balance');
 
         _burn(account, amount);
 
@@ -212,15 +206,8 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
      * total supply.
      *
      * Emits a {Transfer} event with `to` set to the zero address.
-     *
-     * Requirements:
-     * - `account` must have at least `amount` tokens.
-     * - `account` must have at least `amount` tokens.
      */
     function burn(uint256 amount) external override returns (bool) {
-        require(!_stopped, 'XFIToken: transferring is stopped');
-        require(balanceOf(msg.sender) >= amount, 'XFIToken: burn amount exceeds balance');
-
         _burn(msg.sender, amount);
 
         return true;
@@ -423,29 +410,38 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
       * Returns total supply of the token.
       */
      function totalSupply() public view override returns (uint256) {
-         if (block.timestamp < _vestingDeadline) {
-             return convertAmountUsingRatio(_totalSupply);
-         } else {
-             return _totalSupply;
-         }
+         return convertAmountUsingRatio(_totalSupply);
+     }
+
+     /**
+      * Returns unspent vested balance of the `account`.
+      */
+     function unspentVestedBalanceOf(address account) public view override returns (uint256) {
+         return convertAmountUsingRatio(_vestingBalances[account])
+            .sub(_spentVestedBalances[account]);
+     }
+
+     /**
+      * Returns spent vested balance of the `account`.
+      */
+     function spentVestedBalanceOf(address account) public view override returns (uint256) {
+         return _spentVestedBalances[account];
      }
 
      /**
       * Returns token balance of the `account`.
       */
      function balanceOf(address account) public view override returns (uint256) {
-         if (block.timestamp < _vestingDeadline) {
-             return convertAmountUsingRatio(_balances[account]);
-         } else {
-             return _balances[account];
-         }
+         return unspentVestedBalanceOf(account)
+            .add(_balances[account]);
      }
 
      /**
       * Returns reserve amount.
       */
      function getReserveAmount() public view override returns (uint256) {
-         return MAX_TOTAL_SUPPLY.sub(totalSupply());
+         return MAX_TOTAL_SUPPLY
+            .sub(totalSupply());
      }
 
     /**
@@ -464,7 +460,8 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
         require(recipient != address(0), 'XFIToken: transfer to the zero address');
         require(!_stopped, 'XFIToken: transferring is stopped');
 
-        _balances[sender] = balanceOf(sender).sub(amount, 'XFIToken: transfer amount exceeds balance');
+        _decreaseAccountBalance(sender, amount);
+
         _balances[recipient] = _balances[recipient].add(amount);
 
         emit Transfer(sender, recipient, amount);
@@ -489,7 +486,7 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
 
         require(_totalSupply <= MAX_TOTAL_SUPPLY, 'XFIToken: mint will result in exceeding total supply');
 
-        _balances[account] = _balances[account].add(amount);
+        _balances[account] = _vestingBalances[account].add(amount);
 
         emit Transfer(address(0), account, amount);
     }
@@ -499,9 +496,19 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
      * total supply.
      *
      * Emits a {Transfer} event with `to` set to the zero address.
+     *
+     * Requirements:
+     * - `account` cannot be the zero address.
+     * - Transferring is not stopped.
+     * - `account` must have at least `amount` tokens.
      */
     function _burn(address account, uint256 amount) internal {
-        _balances[account] = _balances[account].sub(amount);
+        require(account != address(0), 'XFIToken: burn from the zero address');
+        require(!_stopped, 'XFIToken: transferring is stopped');
+        require(balanceOf(account) >= amount, 'XFIToken: burn amount exceeds balance');
+
+        _decreaseAccountBalance(account, amount);
+
         _totalSupply = _totalSupply.sub(amount);
 
         emit Transfer(account, address(0), amount);
@@ -523,5 +530,31 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
         _allowances[owner][spender] = amount;
 
         emit Approval(owner, spender, amount);
+    }
+
+    /**
+     * Decrease amount balance of the `account`.
+     *
+     * The use of vested balance is in priority. Otherwise, the normal balance
+     * will be used.
+     */
+    function _decreaseAccountBalance(address account, uint256 amount) internal {
+        uint256 accountBalance = balanceOf(account);
+
+        require(accountBalance >= amount, 'XFIToken: transfer amount exceeds balance');
+
+        uint256 accountVestedBalance = unspentVestedBalanceOf(account);
+        uint256 usedVestedBalance = 0;
+        uint256 usedBalance = 0;
+
+        if (accountVestedBalance >= amount) {
+            usedVestedBalance = amount;
+        } else {
+            usedVestedBalance = accountVestedBalance;
+            usedBalance = amount.sub(usedVestedBalance);
+        }
+
+        _balances[account] = accountBalance.sub(usedBalance);
+        _spentVestedBalances[account] = _spentVestedBalances[account].add(usedVestedBalance);
     }
 }
