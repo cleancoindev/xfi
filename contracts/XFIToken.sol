@@ -193,9 +193,14 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
      * - Caller must have minter role.
      * - `account` cannot be the zero address.
      * - `account` must have at least `amount` tokens.
+     * - `account` cannot be the zero address.
+     * - `account` must have at least `amount` tokens.
      */
     function burnFrom(address account, uint256 amount) external override returns (bool) {
         require(hasRole(MINTER_ROLE, msg.sender), 'XFIToken: sender is not minter');
+        require(account != address(0), 'XFIToken: burn from the zero address');
+        require(!_stopped, 'XFIToken: transferring is stopped');
+        require(_balances[account] >= amount, 'XFIToken: burn amount exceeds balance');
 
         _burn(account, amount);
 
@@ -210,8 +215,10 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
      *
      * Requirements:
      * - `account` must have at least `amount` tokens.
+     * - `account` must have at least `amount` tokens.
      */
     function burn(uint256 amount) external override returns (bool) {
+        require(!_stopped, 'XFIToken: transferring is stopped');
         require(balanceOf(msg.sender) >= amount, 'XFIToken: burn amount exceeds balance');
 
         _burn(msg.sender, amount);
@@ -370,7 +377,7 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
      function convertAmountUsingRatio(uint256 amount) public view override returns (uint256) {
          return amount
              .mul(daysSinceStart())
-             .div(VESTING_DURATION);
+             .div(VESTING_DURATION.div(1 days));
      }
 
      /**
@@ -380,7 +387,7 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
      function convertAmountUsingReverseRatio(uint256 amount) public view override returns (uint256) {
          return amount
              .mul(vestingEndsInDays())
-             .div(VESTING_DURATION);
+             .div(VESTING_DURATION.div(1 days));
      }
 
      /**
@@ -489,16 +496,9 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
      * total supply.
      *
      * Emits a {Transfer} event with `to` set to the zero address.
-     *
-     * Requirements:
-     * - `account` cannot be the zero address.
-     * - `account` must have at least `amount` tokens.
      */
     function _burn(address account, uint256 amount) internal {
-        require(account != address(0), 'XFIToken: burn from the zero address');
-        require(!_stopped, 'XFIToken: transferring is stopped');
-
-        _balances[account] = _balances[account].sub(amount, 'XFIToken: burn amount exceeds balance');
+        _balances[account] = _balances[account].sub(amount);
         _totalSupply = _totalSupply.sub(amount);
 
         emit Transfer(account, address(0), amount);
