@@ -271,6 +271,8 @@ contract Exchange is AccessControl, ReentrancyGuard, IExchange {
      * Convert input amount to the output XFI amount using timed swap ratio.
      */
     function _calculateSwapAmount(uint256 amount) internal view returns (uint256) {
+        require(amount >= 182, 'Exchange: minimum XFI swap output amount is 182 * 10 ** -18');
+
         if (block.timestamp < _xfiToken.vestingDeadline()) {
             return _xfiToken.convertAmountUsingReverseRatio(amount);
         } else {

@@ -399,9 +399,8 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
       */
      function daysSinceStart() public view override returns (uint256) {
          if (block.timestamp > _startDate) {
-             return block.timestamp
-                 .sub(_startDate)
-                 .div(1 days);
+             return (block.timestamp.div(1 days))
+                 .sub(_startDate.div(1 days));
          } else {
              return 0;
          }

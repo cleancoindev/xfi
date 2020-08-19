@@ -1,4 +1,4 @@
-/* global Web3 contract helpers TestRpc */
+/* global Web3 contract helpers TestRpc rpc WEB3_PROVIDER_URL TEST_RPC_PORT */
 
 /**
  * Integration test which covers functionality of Ethereum XFI Exchange.
@@ -10,27 +10,13 @@
 
 const bigInt = require('big-integer');
 
-const TEST_RPC_PORT = +process.env.TEST_RPC_PORT || 9545;
-
-const web3 = new Web3(`http://localhost:${TEST_RPC_PORT}`);
-
-// const increaseTime = addSeconds => {
-//     return new Promise((resolve, reject) => {
-//         web3.currentProvider.send({
-//             jsonrpc: '2.0',
-//             method: 'evm_increaseTime',
-//             params: [addSeconds], id: 0
-//         }, (err, result) => {
-//             err? reject(err) : resolve(result);
-//         });
-//     });
-// };
+const web3 = new Web3(WEB3_PROVIDER_URL);
 
 const {toStr, toWei} = helpers;
 const {ZERO_ADDRESS} = helpers;
 
 describe('Ethereum XFI Exchange', () => {
-    const START_DATE                         = Math.floor((Date.now() + 3600) / 1000).toString();
+    const START_DATE                         = Math.floor((Date.now() / 1000) + 3600).toString();
     const WINGS_TOTAL_SUPPLY                 = toWei('100000000'); // 1e26
     const WINGS_PER_ETH                      = 100;
     const XFI_PER_ETH                        = 100;
@@ -74,7 +60,7 @@ describe('Ethereum XFI Exchange', () => {
     });
 
     // const now       = Math.floor(new Date().getTime() / 1000);
-    // const sixMonths = 15780000;
+    const sixMonths = 15780000;
     // const deadline  = (now + sixMonths).toString();
 
     let wingsToken;
@@ -87,7 +73,7 @@ describe('Ethereum XFI Exchange', () => {
     });
 
     before('deploy', async () => {
-        const web3Provider = new Web3.providers.HttpProvider(`http://localhost:${TEST_RPC_PORT}`);
+        const web3Provider = new Web3.providers.HttpProvider(WEB3_PROVIDER_URL);
 
         // Deploy of the Wings token mock.
         const WingsTokenJson = require('build/contracts/WingsToken.json');
@@ -607,9 +593,9 @@ describe('Ethereum XFI Exchange', () => {
         }
     });
 
-    // xit('move time after deadline', async () => {
-    //     await increaseTime(sixMonths + 100);
-    // });
+    xit('move time after deadline', async () => {
+        await moveTime(sixMonths + 100);
+    });
 
     xit('shouldn\'t allow to swap WINGS afer deadline', async () => {
         try {
@@ -768,3 +754,14 @@ describe('Ethereum XFI Exchange', () => {
         testRpc.stop();
     });
 });
+
+/**
+ * Move Test RPC time.
+ *
+ * @param  {Number}  seconds
+ * @return {Promise}
+ */
+async function moveTime(seconds) {
+    await rpc('evm_increaseTime', [seconds]);
+    await rpc('evm_mine');
+}

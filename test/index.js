@@ -39,4 +39,5 @@ global.rpc               = rpc.bind(null, request);
 describe('Integration', () => {
     require('test/integration/xfi-token');
     require('test/integration/exchange');
+    require('test/integration/distribution-math');
 });
