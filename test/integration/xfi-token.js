@@ -1,4 +1,4 @@
-/* global Web3 contract helpers TestRpc rpc WEB3_PROVIDER_URL TEST_RPC_PORT */
+/* global Web3 contract helpers TestRpc moveTime WEB3_PROVIDER_URL TEST_RPC_PORT */
 
 /**
  * Integration test which covers functionality of XFI Token.
@@ -897,14 +897,3 @@ describe('XFI Token', () => {
         testRpc.stop();
     });
 });
-
-/**
- * Move Test RPC time.
- *
- * @param  {Number}  seconds
- * @return {Promise}
- */
-async function moveTime(seconds) {
-    await rpc('evm_increaseTime', [seconds]);
-    await rpc('evm_mine');
-}

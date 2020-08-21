@@ -28,13 +28,16 @@ const method  = (url.parse(WEB3_PROVIDER_URL).protocol === 'http:') && 'http' ||
 const client  = jayson.client[method](WEB3_PROVIDER_URL);
 const request = prom(client.request).bind(client);
 
+const rpcWithClient = rpc.bind(null, request);
+
 global.contract          = contract;
 global.Web3              = Web3;
 global.TEST_RPC_PORT     = TEST_RPC_PORT;
 global.WEB3_PROVIDER_URL = WEB3_PROVIDER_URL;
 global.helpers           = helpers;
 global.TestRpc           = TestRpc;
-global.rpc               = rpc.bind(null, request);
+global.rpc               = rpcWithClient;
+global.moveTime          = helpers.moveTime.bind(null, rpcWithClient);
 
 describe('Integration', () => {
     require('test/integration/xfi-token');
