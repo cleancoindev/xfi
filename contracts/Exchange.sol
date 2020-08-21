@@ -34,6 +34,7 @@ contract Exchange is AccessControl, ReentrancyGuard, IExchange {
 
     bool private _stopped = false;
     uint256 private _maxGasPrice;
+    uint256 private _remainder;
 
     /**
      * Sets {DEFAULT_ADMIN_ROLE} (alias `owner`) role for caller.
@@ -61,8 +62,17 @@ contract Exchange is AccessControl, ReentrancyGuard, IExchange {
     function swapWINGSForXFI(uint256 amountIn) external override nonReentrant returns (uint256[] memory amounts) {
         _beforeSwap();
 
-        amounts = estimateSwapWINGSForXFI(amountIn);
-        amounts[1] = _calculateSwapAmount(amounts[1]);
+        uint256 amountOut;
+        uint256 remainder_;
+
+        (amountOut, remainder_) = _calculateSwapAmount(amountIn);
+
+        amounts = new uint256[](2);
+        amounts[0] = amountIn;
+
+        amounts[1] = amountOut;
+
+        _remainder = _remainder.add(remainder_);
 
         require(_wingsToken.transferFrom(msg.sender, address(this), amounts[0]), 'Exchange: WINGS transferFrom failed');
         require(_xfiToken.mint(msg.sender, amounts[amounts.length - 1]), 'Exchange: XFI mint failed');
@@ -86,9 +96,15 @@ contract Exchange is AccessControl, ReentrancyGuard, IExchange {
         path[1] = address(_wingsToken);
 
         amounts = _uniswapRouter.swapExactETHForTokens{value: msg.value}(amountOutMin, path, address(this), block.timestamp);
-        amounts[1] = _calculateSwapAmount(amounts[1]);
 
-        require(amounts[amounts.length - 1] >= amountOutMin, 'Exchange: ETH-XFI swap failed');
+        uint256 amountOut;
+        uint256 remainder_;
+
+        (amountOut, remainder_) = _calculateSwapAmount(amounts[amounts.length - 1]);
+
+        amounts[amounts.length - 1] = amountOut;
+
+        _remainder = _remainder.add(remainder_);
 
         require(_xfiToken.mint(msg.sender, amounts[amounts.length - 1]), 'Exchange: XFI mint failed');
 
@@ -229,13 +245,26 @@ contract Exchange is AccessControl, ReentrancyGuard, IExchange {
     }
 
     /**
+     * Returns the remainder of WINGS tokens. The remainder is being updated on
+     * each swap that has result with undivided part that is lower than divisor
+     * which in our case is the vesting duration.
+     */
+    function remainder() external view override returns (uint256) {
+        return _remainder;
+    }
+
+    /**
      * Returns `amounts` estimation for swap of WINGS-XFI pair.
      */
     function estimateSwapWINGSForXFI(uint256 amountIn) public view override returns (uint256[] memory amounts) {
         amounts = new uint256[](2);
         amounts[0] = amountIn;
 
-        amounts[1] = _calculateSwapAmount(amountIn);
+        uint256 amountOut;
+
+        (amountOut, ) = _calculateSwapAmount(amounts[0]);
+
+        amounts[1] = amountOut;
     }
 
     /**
@@ -247,7 +276,12 @@ contract Exchange is AccessControl, ReentrancyGuard, IExchange {
         path[1] = address(_wingsToken);
 
         amounts = _uniswapRouter.getAmountsOut(amountIn, path);
-        amounts[1] = _calculateSwapAmount(amounts[1]);
+
+        uint256 amountOut;
+
+        (amountOut, ) = _calculateSwapAmount(amounts[1]);
+
+        amounts[1] = amountOut;
     }
 
     /**
@@ -270,13 +304,16 @@ contract Exchange is AccessControl, ReentrancyGuard, IExchange {
     /**
      * Convert input amount to the output XFI amount using timed swap ratio.
      */
-    function _calculateSwapAmount(uint256 amount) internal view returns (uint256) {
+    function _calculateSwapAmount(uint256 amount) internal view returns (uint256, uint256) {
         require(amount >= 182, 'Exchange: minimum XFI swap output amount is 182 * 10 ** -18');
 
         if (block.timestamp < _xfiToken.vestingDeadline()) {
-            return _xfiToken.convertAmountUsingReverseRatio(amount);
+            uint256 amountOut = _xfiToken.convertAmountUsingReverseRatio(amount);
+            uint256 remainder_ = amount.mod(_xfiToken.VESTING_DURATION().div(1 days));
+
+            return (amountOut, remainder_);
         } else {
-            return 0;
+            return (0, 0);
         }
     }
 }

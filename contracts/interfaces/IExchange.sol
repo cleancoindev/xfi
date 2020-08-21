@@ -19,6 +19,7 @@ interface IExchange {
     function estimateSwapETHForXFIPerDay(uint256 amountIn) external view returns (uint256);
     function isSwappingStopped() external view returns (bool);
     function maxGasPrice() external view returns (uint256);
+    function remainder() external view returns (uint256);
 
     function swapWINGSForXFI(uint256 amountIn) external returns (uint256[] memory amounts);
     function swapETHForXFI(uint256 amountOutMin) external payable returns (uint256[] memory amounts);

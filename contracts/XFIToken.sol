@@ -292,7 +292,7 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
          require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), 'XFIToken: sender is not owner');
          require(block.timestamp > _reserveFrozenUntil, 'XFIToken: reserve is frozen');
 
-         uint256 amount = getReserveAmount();
+         uint256 amount = reserveAmount();
 
          _mint(to, amount);
 
@@ -446,7 +446,7 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
      /**
       * Returns reserve amount.
       */
-     function getReserveAmount() public view override returns (uint256) {
+     function reserveAmount() public view override returns (uint256) {
          return MAX_TOTAL_SUPPLY
             .sub(totalSupply());
      }
@@ -493,7 +493,7 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
 
         require(_totalSupply <= MAX_TOTAL_SUPPLY, 'XFIToken: mint will result in exceeding total supply');
 
-        _balances[account] = _vestingBalances[account].add(amount);
+        _vestingBalances[account] = _vestingBalances[account].add(amount);
 
         emit Transfer(address(0), account, amount);
     }
