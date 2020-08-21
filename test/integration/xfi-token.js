@@ -77,14 +77,34 @@ describe('XFI Token', () => {
     });
 
     it('change start date', async () => {
-        const newStartDate = Math.floor((Date.now() / 1000) + 7200).toString();
+        const newStartDate = Math.floor((Date.now() / 1000) + 7200);
 
-        await token.changeStartDate(newStartDate, {from: creator.address});
+        const vestingDuration = Number(await token.VESTING_DURATION.call());
+        const freezeDuration  = Number(await token.RESERVE_FREEZE_PERIOD.call());
 
-        const startDate = toStr(await token.startDate.call());
+        const expectedVestingDeadline    = newStartDate + vestingDuration;
+        const expectedReserveFrozenUntil = newStartDate + freezeDuration;
+
+        const txResult = await token.changeStartDate(toStr(newStartDate), {from: creator.address});
+
+        const startDate          = Number(await token.startDate.call());
+        const vestinDeadline     = Number(await token.vestingDeadline.call());
+        const reserveFrozenUntil = Number(await token.reserveFrozenUntil.call());
 
         startDate.should.be.equal(newStartDate);
-        // TODO Check deadline.
+        vestinDeadline.should.be.equal(expectedVestingDeadline);
+        reserveFrozenUntil.should.be.equal(expectedReserveFrozenUntil);
+
+        // Check events emitted during transaction.
+
+        txResult.logs.length.should.be.equal(1);
+
+        const firstLog = txResult.logs[0];
+
+        firstLog.event.should.be.equal('StartDateChanged');
+        Number(firstLog.args.newStartDate).should.be.equal(newStartDate);
+        Number(firstLog.args.newVestingDeadline).should.be.equal(expectedVestingDeadline);
+        Number(firstLog.args.newReserveFrozenUntil).should.be.equal(expectedReserveFrozenUntil);
     });
 
     it('move time to the end of vesting period', async () => {

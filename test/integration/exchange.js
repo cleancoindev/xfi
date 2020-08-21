@@ -350,11 +350,20 @@ describe('Ethereum XFI Exchange', () => {
 
         const maxGasPrice = toWei('100', 'gwei');
 
-        await exchange.setMaxGasPrice(maxGasPrice, {from: creator.address});
+        const txResult = await exchange.setMaxGasPrice(maxGasPrice, {from: creator.address});
 
         const maxGasPriceAfter = toStr(await exchange.maxGasPrice.call());
 
         maxGasPriceAfter.should.be.equal(maxGasPrice);
+
+        // Check events emitted during transaction.
+
+        txResult.logs.length.should.be.equal(1);
+
+        const firstLog = txResult.logs[0];
+
+        firstLog.event.should.be.equal('MaxGasPriceChanged');
+        toStr(firstLog.args.newMaxGasPrice).should.be.equal(maxGasPrice);
     });
 
     it('doesn\'t allow to swap when gas price is higher than the limit', async () => {
