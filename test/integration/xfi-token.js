@@ -16,8 +16,6 @@ const {ZERO_ADDRESS} = helpers;
 const ONE_DAY = 86400;
 
 describe('XFI Token', () => {
-    const START_DATE = Math.floor((Date.now() / 1000) + 3600).toString();
-
     const creator    = web3.eth.accounts.create();
     const newOwner   = web3.eth.accounts.create();
     const tempOwner  = web3.eth.accounts.create();
@@ -67,20 +65,45 @@ describe('XFI Token', () => {
     });
 
     before('deploy', async () => {
+        const startDate = Math.floor((Date.now() / 1000) + 3600).toString();
+
         const web3Provider = new Web3.providers.HttpProvider(WEB3_PROVIDER_URL);
 
         const TokenJson = require('build/contracts/XFIToken.json');
         const Token     = contract({abi: TokenJson.abi, unlinked_binary: TokenJson.bytecode});
         Token.setProvider(web3Provider);
 
-        token = await Token.new(START_DATE, {from: creator.address});
+        token = await Token.new(startDate, {from: creator.address});
+    });
+
+    it('change start date', async () => {
+        const newStartDate = Math.floor((Date.now() / 1000) + 7200).toString();
+
+        await token.changeStartDate(newStartDate, {from: creator.address});
+
+        const startDate = toStr(await token.startDate.call());
+
+        startDate.should.be.equal(newStartDate);
+        // TODO Check deadline.
     });
 
     it('move time to the end of vesting period', async () => {
+        const daysSinceStartBefore    = Number(await token.daysSinceStart.call());
+        const vestingEndsInDaysBefore = Number(await token.vestingEndsInDays.call());
+
+        daysSinceStartBefore.should.be.equal(0);
+        vestingEndsInDaysBefore.should.be.equal(182);
+
         const now             = Math.floor(Date.now() / 1000);
         const vestingDeadline = await token.vestingDeadline.call();
 
         await moveTime(vestingDeadline - now);
+
+        const daysSinceStartAfter    = Number(await token.daysSinceStart.call());
+        const vestingEndsInDaysAfter = Number(await token.vestingEndsInDays.call());
+
+        daysSinceStartAfter.should.be.equal(182);
+        vestingEndsInDaysAfter.should.be.equal(0);
     });
 
     it('correct values of the default constants', async () => {
@@ -299,24 +322,47 @@ describe('XFI Token', () => {
     });
 
     it('minter mints tokens for tmp user and user burns it', async () => {
+        // Amount of XFI to mint.
+        const amountToMint = toWei('10');
+
         const totalSupplyBefore = toStr(await token.totalSupply.call());
         const userBalanceBefore = toStr(await token.balanceOf.call(tmpUser.address));
 
         userBalanceBefore.should.be.equal('0');
 
-        const amountToMint = toWei('10');
+        /* ▲ Before mint ▲ */
+
         await token.mint(tmpUser.address, amountToMint, {from: minter.address});
 
-        const balanceAfter = toStr(await token.balanceOf.call(tmpUser.address));
-        balanceAfter.should.be.equal(amountToMint);
+        /* ▼ After mint ▼ */
+
+        const balanceAfterMint           = toStr(await token.balanceOf.call(tmpUser.address));
+        const totalVestedBalanceBefore   = toStr(await token.totalVestedBalanceOf.call(tmpUser.address));
+        const unspentVestedBalanceBefore = toStr(await token.unspentVestedBalanceOf.call(tmpUser.address));
+        const spentVestedBalanceBefore   = toStr(await token.spentVestedBalanceOf.call(tmpUser.address));
+
+        balanceAfterMint.should.be.equal(amountToMint);
+        totalVestedBalanceBefore.should.be.equal(amountToMint);
+        unspentVestedBalanceBefore.should.be.equal(amountToMint);
+        spentVestedBalanceBefore.should.be.equal('0');
+
+        /* ▲ Before burn ▲ */
 
         await token.burn(amountToMint, {from: tmpUser.address});
-        const totalSupplyAfter = toStr(await token.totalSupply.call());
 
-        totalSupplyBefore.should.be.equal(totalSupplyAfter);
-        const balanceAfterBurn = toStr(await token.balanceOf.call(tmpUser.address));
+        /* ▼ After burn ▼ */
 
+        const totalSupplyAfter          = toStr(await token.totalSupply.call());
+        const balanceAfterBurn          = toStr(await token.balanceOf.call(tmpUser.address));
+        const totalVestedBalanceAfter   = toStr(await token.totalVestedBalanceOf.call(tmpUser.address));
+        const unspentVestedBalanceAfter = toStr(await token.unspentVestedBalanceOf.call(tmpUser.address));
+        const spentVestedBalanceAfter   = toStr(await token.spentVestedBalanceOf.call(tmpUser.address));
+
+        totalSupplyAfter.should.be.equal(totalSupplyBefore);
         balanceAfterBurn.should.be.equal('0');
+        totalVestedBalanceAfter.should.be.equal(amountToMint);
+        unspentVestedBalanceAfter.should.be.equal('0');
+        spentVestedBalanceAfter.should.be.equal(amountToMint);
     });
 
     it('doesn\'t allow to transfer tokens to zero address', async () => {
@@ -766,17 +812,34 @@ describe('XFI Token', () => {
     });
 
     it('withdraw reserve', async () => {
-        const reserveAmountBefore = toStr(await token.getReserveAmount.call());
+        const reserveAmountBefore = toStr(await token.reserveAmount.call());
 
-        await token.withdrawReserve(creator.address, {from: creator.address});
+        const txResult = await token.withdrawReserve(creator.address, {from: creator.address});
 
-        const reserveAmountAfter = toStr(await token.getReserveAmount.call());
+        const reserveAmountAfter = toStr(await token.reserveAmount.call());
 
         reserveAmountAfter.should.be.equal('0');
 
         const creatorBalance = toStr(await token.balanceOf.call(creator.address));
 
         creatorBalance.should.be.equal(reserveAmountBefore);
+
+        // Check events emitted during transaction.
+
+        txResult.logs.length.should.be.equal(2);
+
+        const firstLog = txResult.logs[0];
+
+        firstLog.event.should.be.equal('Transfer');
+        firstLog.args.from.should.be.equal(ZERO_ADDRESS);
+        firstLog.args.to.should.be.equal(creator.address);
+        toStr(firstLog.args.value).should.be.equal(reserveAmountBefore);
+
+        const secondLog = txResult.logs[1];
+
+        secondLog.event.should.be.equal('ReserveWithdrawal');
+        secondLog.args.to.should.be.equal(creator.address);
+        toStr(secondLog.args.amount).should.be.equal(reserveAmountBefore);
     });
 
     it('(last) owner renounces', async () => {

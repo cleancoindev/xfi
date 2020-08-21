@@ -561,7 +561,7 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
             usedBalance = amount.sub(usedVestedBalance);
         }
 
-        _balances[account] = accountBalance.sub(usedBalance);
+        _balances[account] = _balances[account].sub(usedBalance);
         _spentVestedBalances[account] = _spentVestedBalances[account].add(usedVestedBalance);
     }
 }
