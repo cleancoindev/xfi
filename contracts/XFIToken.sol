@@ -376,9 +376,13 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
       * (days until vesting end / vesting duration).
       */
      function convertAmountUsingReverseRatio(uint256 amount) public view override returns (uint256) {
-         return amount
-             .mul(vestingEndsInDays())
-             .div(VESTING_DURATION.div(1 days));
+         if (daysSinceStart() > 0) {
+             return amount
+                 .mul(vestingEndsInDays())
+                 .div(VESTING_DURATION.div(1 days));
+         } else {
+             return amount;
+         }
      }
 
      /**

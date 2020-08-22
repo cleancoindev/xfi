@@ -70,7 +70,7 @@ describe('XFI Token', () => {
     });
 
     before('deploy', async () => {
-        const startDate = Math.floor((Date.now() / 1000) + 3600).toString();
+        const startDate = Math.floor((Date.now() / 1000) + ONE_DAY).toString();
 
         const web3Provider = new Web3.providers.HttpProvider(WEB3_PROVIDER_URL);
 
@@ -106,7 +106,7 @@ describe('XFI Token', () => {
     });
 
     it('change start date', async () => {
-        const newStartDate = Math.floor((Date.now() / 1000) + 7200);
+        const newStartDate = Math.floor((Date.now() / 1000) + ONE_DAY * 2);
 
         const vestingDuration = Number(await token.VESTING_DURATION.call());
         const freezeDuration  = Number(await token.RESERVE_FREEZE_PERIOD.call());
@@ -141,10 +141,10 @@ describe('XFI Token', () => {
         const vestingEndsInDaysBefore = Number(await token.vestingEndsInDays.call());
 
         daysSinceStartBefore.should.be.equal(0);
-        vestingEndsInDaysBefore.should.be.equal(182);
+        vestingEndsInDaysBefore.should.be.equal(184);
 
         const now             = Math.floor(Date.now() / 1000);
-        const vestingDeadline = await token.vestingDeadline.call();
+        const vestingDeadline = Number(await token.vestingDeadline.call());
 
         await moveTime(vestingDeadline - now + 1);
 

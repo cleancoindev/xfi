@@ -71,13 +71,17 @@ async function runTestCase(amount) {
 
     await testRpc.start(TEST_RPC_PORT);
 
-    const startDate = Math.floor((Date.now() / 1000) + 3600).toString();
+    const startDate = Math.floor((Date.now() / 1000) + ONE_DAY).toString();
 
     const token = await Token.new(startDate, {from: creator.address});
 
     const minterRole = await token.MINTER_ROLE.call();
 
     await token.grantRole(minterRole, minter.address, {from: creator.address});
+
+    const now = Math.floor(Date.now() / 1000);
+
+    await moveTime(startDate - now + 1);
 
     const vestingDuration = Number(await token.VESTING_DURATION.call()) / ONE_DAY;
 
@@ -152,9 +156,12 @@ function calculateDailyBalances(amount, vestingDuration, day) {
  * @return {String}                 Converted amount.
  */
 function convertAmountUsingReverseRatio(amount, vestingDuration, day) {
-    return toStr(
-        bigInt(amount)
+    if (day > 0) {
+        return bigInt(amount)
             .times(vestingDuration - day)
             .divide(vestingDuration)
-    );
+            .toString(10);
+    } else {
+        return amount;
+    }
 }
