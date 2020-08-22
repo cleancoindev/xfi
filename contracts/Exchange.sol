@@ -289,11 +289,13 @@ contract Exchange is AccessControl, ReentrancyGuard, IExchange {
      *
      * Requirements:
      * - Contract is not stopped.
+     * - Swapping has started.
      * - Swapping hasn't ended.
      * - Gas price doesn't exceed the limit (if set).
      */
     function _beforeSwap() internal view {
         require(!_stopped, 'Exchange: swapping is stopped');
+        require(block.timestamp >= _xfiToken.startDate(), 'Exchange: swapping has not started');
         require(block.timestamp <= _xfiToken.vestingDeadline(), 'Exchange: swapping has ended');
 
         if (_maxGasPrice > 0) {

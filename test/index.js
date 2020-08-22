@@ -41,9 +41,9 @@ global.moveTime          = helpers.moveTime.bind(null, rpcWithClient);
 
 describe('Integration', () => {
     require('test/integration/xfi-token');
+    require('test/integration/exchange');
     require('test/integration/vesting');
 
     /* NOTE WIP. */
-    // require('test/integration/exchange');
     // require('test/integration/distribution-math');
 });

@@ -16,13 +16,14 @@ const {ZERO_ADDRESS} = helpers;
 const ONE_DAY = 86400;
 
 describe('XFI Token', () => {
-    const creator    = web3.eth.accounts.create();
-    const newOwner   = web3.eth.accounts.create();
-    const tempOwner  = web3.eth.accounts.create();
-    const minter     = web3.eth.accounts.create();
-    const firstUser  = web3.eth.accounts.create();
-    const secondUser = web3.eth.accounts.create();
-    const tmpUser    = web3.eth.accounts.create();
+    const creator       = web3.eth.accounts.create();
+    const newOwner      = web3.eth.accounts.create();
+    const tempOwner     = web3.eth.accounts.create();
+    const minter        = web3.eth.accounts.create();
+    const firstUser     = web3.eth.accounts.create();
+    const secondUser    = web3.eth.accounts.create();
+    const tmpUser       = web3.eth.accounts.create();
+    const maliciousUser = web3.eth.accounts.create();
 
     const testRpc = TestRpc({
         accounts: [
@@ -53,6 +54,10 @@ describe('XFI Token', () => {
             {
                 balance: toWei('10'),
                 secretKey: tmpUser.privateKey
+            },
+            {
+                balance: toWei('10'),
+                secretKey: maliciousUser.privateKey
             }
         ],
         locked: false
@@ -74,6 +79,30 @@ describe('XFI Token', () => {
         Token.setProvider(web3Provider);
 
         token = await Token.new(startDate, {from: creator.address});
+    });
+
+    it('doesn\'t allow to change deadline without owner access role', async () => {
+        try {
+            await token.changeStartDate('0', {from: maliciousUser.address});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('XFIToken: sender is not owner');
+        }
+    });
+
+    it('doesn\'t allow to change to zero start date', async () => {
+        try {
+            await token.changeStartDate('0', {from: creator.address});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('XFIToken: start date must be great than current timestamp');
+        }
     });
 
     it('change start date', async () => {
@@ -117,7 +146,7 @@ describe('XFI Token', () => {
         const now             = Math.floor(Date.now() / 1000);
         const vestingDeadline = await token.vestingDeadline.call();
 
-        await moveTime(vestingDeadline - now);
+        await moveTime(vestingDeadline - now + 1);
 
         const daysSinceStartAfter    = Number(await token.daysSinceStart.call());
         const vestingEndsInDaysAfter = Number(await token.vestingEndsInDays.call());
