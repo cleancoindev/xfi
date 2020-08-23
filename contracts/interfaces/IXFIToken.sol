@@ -16,7 +16,9 @@ interface IXFIToken is IERC20 {
     function isTransferringStopped() external view returns (bool);
     function burnFrom(address account, uint256 amount) external returns (bool);
     function VESTING_DURATION() external view returns (uint256);
-    function RESERVE_FREEZE_PERIOD() external view returns (uint256);
+    function VESTING_DURATION_DAYS() external view returns (uint256);
+    function RESERVE_FREEZE_DURATION() external view returns (uint256);
+    function RESERVE_FREEZE_DURATION_DAYS() external view returns (uint256);
     function MAX_TOTAL_SUPPLY() external view returns (uint256);
     function startDate() external view returns (uint256);
     function vestingDeadline() external view returns (uint256);

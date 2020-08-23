@@ -311,7 +311,7 @@ contract Exchange is AccessControl, ReentrancyGuard, IExchange {
 
         if (block.timestamp < _xfiToken.vestingDeadline()) {
             uint256 amountOut = _xfiToken.convertAmountUsingReverseRatio(amount);
-            uint256 remainder_ = amount.mod(_xfiToken.VESTING_DURATION().div(1 days));
+            uint256 remainder_ = amount.mod(_xfiToken.VESTING_DURATION_DAYS());
 
             return (amountOut, remainder_);
         } else {

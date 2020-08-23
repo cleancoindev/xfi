@@ -8,6 +8,8 @@
 
 'use strict';
 
+const bigInt = require('big-integer');
+
 const web3 = new Web3(WEB3_PROVIDER_URL);
 
 const {toStr, toWei} = helpers;
@@ -109,7 +111,7 @@ describe('XFI Token', () => {
         const newStartDate = Math.floor((Date.now() / 1000) + ONE_DAY * 2);
 
         const vestingDuration = Number(await token.VESTING_DURATION.call());
-        const freezeDuration  = Number(await token.RESERVE_FREEZE_PERIOD.call());
+        const freezeDuration  = Number(await token.RESERVE_FREEZE_DURATION.call());
 
         const expectedVestingDeadline    = newStartDate + vestingDuration;
         const expectedReserveFrozenUntil = newStartDate + freezeDuration;
@@ -174,11 +176,29 @@ describe('XFI Token', () => {
     });
 
     it('correct vesting duration', async () => {
-        const expectedVestingDuration = toStr(182 * ONE_DAY);
+        const expectedVestingDurationDays = toStr(182);
+        const expectedVestingDuration     = bigInt(expectedVestingDurationDays)
+            .times(ONE_DAY)
+            .toString(10);
 
-        const vestingDuration = toStr(await token.VESTING_DURATION.call());
+        const vestingDuration     = toStr(await token.VESTING_DURATION.call());
+        const vestingDurationDays = toStr(await token.VESTING_DURATION_DAYS.call());
 
         vestingDuration.should.be.equal(expectedVestingDuration);
+        vestingDurationDays.should.be.equal(expectedVestingDurationDays);
+    });
+
+    it('correct freeze duration', async () => {
+        const expectedReserveFreezeDurationDays = toStr(730);
+        const expectedReserveFreezeDuration     = bigInt(expectedReserveFreezeDurationDays)
+            .times(ONE_DAY)
+            .toString(10);
+
+        const reserveFreezeDuration     = toStr(await token.RESERVE_FREEZE_DURATION.call());
+        const reserveFreezeDurationDays = toStr(await token.RESERVE_FREEZE_DURATION_DAYS.call());
+
+        reserveFreezeDuration.should.be.equal(expectedReserveFreezeDuration);
+        reserveFreezeDurationDays.should.be.equal(expectedReserveFreezeDurationDays);
     });
 
     it('total supply is zero', async () => {

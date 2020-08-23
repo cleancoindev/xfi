@@ -36,13 +36,15 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
 
     uint256 public constant override MAX_TOTAL_SUPPLY = 1e26; // 100 million XFI.
 
+    uint256 public constant override VESTING_DURATION_DAYS = 182;
     uint256 public constant override VESTING_DURATION = 182 days;
 
     /**
      * @dev Reserve is the final amount of tokens that weren't distributed
      * during the vesting.
      */
-    uint256 public constant override RESERVE_FREEZE_PERIOD = 730 days; // Around 2 years.
+    uint256 public constant override RESERVE_FREEZE_DURATION_DAYS = 730; // Around 2 years.
+    uint256 public constant override RESERVE_FREEZE_DURATION = 730 days;
 
     mapping (address => uint256) private _vestingBalances;
 
@@ -72,7 +74,7 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
 
         _startDate = startDate_;
         _vestingDeadline = startDate_.add(VESTING_DURATION);
-        _reserveFrozenUntil = startDate_.add(RESERVE_FREEZE_PERIOD);
+        _reserveFrozenUntil = startDate_.add(RESERVE_FREEZE_DURATION);
     }
 
     /**
@@ -230,7 +232,7 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
 
         _startDate = startDate_;
         _vestingDeadline = startDate_.add(VESTING_DURATION);
-        _reserveFrozenUntil = startDate_.add(RESERVE_FREEZE_PERIOD);
+        _reserveFrozenUntil = startDate_.add(RESERVE_FREEZE_DURATION);
 
         emit StartDateChanged(startDate_, _vestingDeadline, _reserveFrozenUntil);
 
@@ -362,10 +364,10 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
       * (days since vesting start / vesting duration).
       */
      function convertAmountUsingRatio(uint256 amount) public view override returns (uint256) {
-         if (daysSinceStart() <= VESTING_DURATION.div(1 days)) {
+         if (daysSinceStart() <= VESTING_DURATION_DAYS) {
              return amount
                  .mul(daysSinceStart())
-                 .div(VESTING_DURATION.div(1 days));
+                 .div(VESTING_DURATION_DAYS);
          } else {
              return amount;
          }
@@ -379,7 +381,7 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
          if (daysSinceStart() > 0) {
              return amount
                  .mul(vestingEndsInDays())
-                 .div(VESTING_DURATION.div(1 days));
+                 .div(VESTING_DURATION_DAYS);
          } else {
              return amount;
          }

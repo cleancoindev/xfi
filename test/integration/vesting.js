@@ -83,21 +83,21 @@ async function runTestCase(amount) {
 
     await moveTime(startDate - now + 1);
 
-    const vestingDuration = Number(await token.VESTING_DURATION.call()) / ONE_DAY;
+    const vestingDurationDays = Number(await token.VESTING_DURATION_DAYS.call());
 
     const accounts = [];
 
-    for (let i = 0; i <= vestingDuration; i++) {
+    for (let i = 0; i <= vestingDurationDays; i++) {
         const account = web3.eth.accounts.create();
 
-        account.dailyBalances = calculateDailyBalances(amount, vestingDuration, i);
+        account.dailyBalances = calculateDailyBalances(amount, vestingDurationDays, i);
 
         accounts.push(account);
     }
 
     let i = Number(await token.daysSinceStart.call());
 
-    while (i < vestingDuration) {
+    while (i < vestingDurationDays) {
         // console.log('Day:', i);
 
         const account = accounts[i];
