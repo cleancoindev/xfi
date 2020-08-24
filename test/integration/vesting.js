@@ -9,10 +9,12 @@
 'use strict';
 
 const bigInt = require('big-integer');
+const math   = require('test/lib/math');
 
 const TokenJson = require('build/contracts/XFIToken.json');
 
-const {toStr} = helpers;
+const {toStr}                          = helpers;
+const {convertAmountUsingReverseRatio} = math;
 
 const ONE_DAY        = 86400;
 const DAY_MULTIPLIER = 60; // Any number in range [1...182].
@@ -145,23 +147,4 @@ function calculateDailyBalances(amount, vestingDuration, day) {
     }
 
     return dailyBalances;
-}
-
-/**
- * JS analogy of the same function in the token.
- *
- * @param  {String} amount          Amount to convert.
- * @param  {Number} vestingDuration Vesting duration in days.
- * @param  {Number} day             Number of days since the vesting start.
- * @return {String}                 Converted amount.
- */
-function convertAmountUsingReverseRatio(amount, vestingDuration, day) {
-    if (day > 0) {
-        return bigInt(amount)
-            .times(vestingDuration - day)
-            .divide(vestingDuration)
-            .toString(10);
-    } else {
-        return amount;
-    }
 }

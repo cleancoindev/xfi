@@ -9,14 +9,17 @@
 'use strict';
 
 const bigInt = require('big-integer');
+const math   = require('test/lib/math');
 
 const ONE_DAY = 86400;
 
 const web3 = new Web3(WEB3_PROVIDER_URL);
 
-const {toStr}        = helpers;
-const {ZERO_ADDRESS} = helpers;
-const {toWei}        = web3.utils;
+const {toStr}                          = helpers;
+const {ZERO_ADDRESS}                   = helpers;
+const {toWei}                          = web3.utils;
+const {convertAmountUsingRatio}        = math;
+const {convertAmountUsingReverseRatio} = math;
 
 describe('Ethereum XFI Exchange', () => {
     const START_DATE                         = Math.floor((Date.now() / 1000) + 3600).toString();
@@ -778,6 +781,17 @@ describe('Ethereum XFI Exchange', () => {
         secondUserSpentVestedBalanceAfter.should.be.equal(expectedSecondUserSpentVestedBalance);
     });
 
+    it('second user burns 1 XFI', async () => {
+        const amountToBurn = toWei('1');
+
+        await xfiToken.burn(amountToBurn, {from: secondUser.address});
+
+        // Update absolute XFI total supply.
+        absoluteXfiTotalSupply = bigInt(absoluteXfiTotalSupply)
+            .minus(amountToBurn)
+            .toString(10);
+    });
+
     it('swap WINGS-XFI (second user, second day)', async () => {
         const vestingDuration = Number(await xfiToken.VESTING_DURATION.call()) / ONE_DAY;
         const daysSinceStart  = Number(await xfiToken.daysSinceStart.call());
@@ -793,7 +807,7 @@ describe('Ethereum XFI Exchange', () => {
         // Expected values before the swap.
         const expectedXfiTotalSupplyBefore       = await calculateXfiTotalSupply(xfiToken, absoluteXfiTotalSupply);
         const expectedUserWingsBalanceBefore     = toWei('200');
-        const expectedUserXfiBalanceBefore       = toWei('1');
+        const expectedUserXfiBalanceBefore       = '0';
         const expectedExchangeWingsBalanceBefore = toWei('300');
 
         // Update the absolute XFI total supply.
@@ -1018,7 +1032,6 @@ describe('Ethereum XFI Exchange', () => {
         const secondUserSpentVestedBalance   = toStr(await xfiToken.spentVestedBalanceOf.call(secondUser.address));
 
         const expectedSecondUserBalance              = bigInt(convertAmountUsingReverseRatio(toWei('200'), vestingDuration, 1))
-            .plus(toWei('1'))
             .toString(10);
         const expectedSecondUserTotalVestedBalance   = bigInt(convertAmountUsingReverseRatio(toWei('200'), vestingDuration, 1))
             .toString(10);
@@ -1160,44 +1173,6 @@ describe('Ethereum XFI Exchange', () => {
         testRpc.stop();
     });
 });
-
-/**
- * JS analogy of the same function in the token.
- *
- * @param  {String} amount          Amount to convert.
- * @param  {Number} vestingDuration Vesting duration in days.
- * @param  {Number} day             Number of days since the vesting start.
- * @return {String}                 Converted amount.
- */
-function convertAmountUsingRatio(amount, vestingDuration, day) {
-    if (day <= vestingDuration) {
-        return bigInt(amount)
-            .times(day)
-            .divide(vestingDuration)
-            .toString(10);
-    } else {
-        return amount;
-    }
-}
-
-/**
- * JS analogy of the same function in the token.
- *
- * @param  {String} amount          Amount to convert.
- * @param  {Number} vestingDuration Vesting duration in days.
- * @param  {Number} day             Number of days since the vesting start.
- * @return {String}                 Converted amount.
- */
-function convertAmountUsingReverseRatio(amount, vestingDuration, day) {
-    if (day > 0) {
-        return bigInt(amount)
-            .times(vestingDuration - day)
-            .divide(vestingDuration)
-            .toString(10);
-    } else {
-        return amount;
-    }
-}
 
 /**
  * Calculate XFI total supply on a particular day.

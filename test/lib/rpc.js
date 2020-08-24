@@ -1,3 +1,9 @@
+/**
+ * RPC request wrapper.
+ *
+ * @module test/lib/rpc
+ */
+
 'use strict';
 
 /**
