@@ -512,18 +512,6 @@ describe('Ethereum XFI Exchange', () => {
         toStr(firstLog.args.amountOut).should.be.equal(amountIn);
     });
 
-    it('check the remainder', async () => {
-        /**
-         * Since 1e20 divided by 182 produces a remainder of 100, let's check
-         * for it.
-         */
-        const expectedRemainder = '100';
-
-        const remainder = toStr(await exchange.remainder.call());
-
-        remainder.should.be.equal(expectedRemainder);
-    });
-
     it('doesn\'t allow to swap for less than 182 XFI Wei', async () => {
         try {
             await exchange.swapETHForXFI('181', {from: firstUser.address});
@@ -992,6 +980,56 @@ describe('Ethereum XFI Exchange', () => {
         const vestingDeadline = await xfiToken.vestingDeadline.call();
 
         await moveTime(vestingDeadline - now + 1);
+    });
+
+    it('check first user\'s balance', async () => {
+        const vestingDuration = Number(await xfiToken.VESTING_DURATION.call()) / ONE_DAY;
+
+        const firstUserBalance              = toStr(await xfiToken.balanceOf.call(firstUser.address));
+        const firstUserTotalVestedBalance   = toStr(await xfiToken.totalVestedBalanceOf.call(firstUser.address));
+        const firstUserUnspentVestedBalance = toStr(await xfiToken.unspentVestedBalanceOf.call(firstUser.address));
+        const firstUserSpentVestedBalance   = toStr(await xfiToken.spentVestedBalanceOf.call(firstUser.address));
+
+        const expectedFirstUserBalance              = bigInt(convertAmountUsingReverseRatio(toWei('200'), vestingDuration, 0))
+            .plus(convertAmountUsingReverseRatio(toWei('100'), vestingDuration, 1))
+            .minus(toWei('1'))
+            .toString(10);
+        const expectedFirstUserTotalVestedBalance   = bigInt(convertAmountUsingReverseRatio(toWei('200'), vestingDuration, 0))
+            .plus(convertAmountUsingReverseRatio(toWei('100'), vestingDuration, 1))
+            .toString(10);
+        const expectedFirstUserUnspentVestedBalance = bigInt(convertAmountUsingReverseRatio(toWei('200'), vestingDuration, 0))
+            .plus(convertAmountUsingReverseRatio(toWei('100'), vestingDuration, 1))
+            .minus(toWei('1'))
+            .toString(10);
+        const expectedFirstUserSpentVestedBalance   = toWei('1');
+
+        firstUserBalance.should.be.equal(expectedFirstUserBalance);
+        firstUserTotalVestedBalance.should.be.equal(expectedFirstUserTotalVestedBalance);
+        firstUserUnspentVestedBalance.should.be.equal(expectedFirstUserUnspentVestedBalance);
+        firstUserSpentVestedBalance.should.be.equal(expectedFirstUserSpentVestedBalance);
+    });
+
+    it('check second user\'s balance', async () => {
+        const vestingDuration = Number(await xfiToken.VESTING_DURATION.call()) / ONE_DAY;
+
+        const secondUserBalance              = toStr(await xfiToken.balanceOf.call(secondUser.address));
+        const secondUserTotalVestedBalance   = toStr(await xfiToken.totalVestedBalanceOf.call(secondUser.address));
+        const secondUserUnspentVestedBalance = toStr(await xfiToken.unspentVestedBalanceOf.call(secondUser.address));
+        const secondUserSpentVestedBalance   = toStr(await xfiToken.spentVestedBalanceOf.call(secondUser.address));
+
+        const expectedSecondUserBalance              = bigInt(convertAmountUsingReverseRatio(toWei('200'), vestingDuration, 1))
+            .plus(toWei('1'))
+            .toString(10);
+        const expectedSecondUserTotalVestedBalance   = bigInt(convertAmountUsingReverseRatio(toWei('200'), vestingDuration, 1))
+            .toString(10);
+        const expectedSecondUserUnspentVestedBalance = bigInt(convertAmountUsingReverseRatio(toWei('200'), vestingDuration, 1))
+            .toString(10);
+        const expectedSecondUserSpentVestedBalance   = '0';
+
+        secondUserBalance.should.be.equal(expectedSecondUserBalance);
+        secondUserTotalVestedBalance.should.be.equal(expectedSecondUserTotalVestedBalance);
+        secondUserUnspentVestedBalance.should.be.equal(expectedSecondUserUnspentVestedBalance);
+        secondUserSpentVestedBalance.should.be.equal(expectedSecondUserSpentVestedBalance);
     });
 
     it('doesn\'t allow to swap WINGS afer deadline', async () => {

@@ -392,8 +392,9 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
       */
      function daysSinceStart() public view override returns (uint256) {
          if (block.timestamp > _startDate) {
-             return (block.timestamp.div(1 days))
-                 .sub(_startDate.div(1 days));
+             return block.timestamp
+                 .sub(_startDate)
+                 .div(1 days);
          } else {
              return 0;
          }
@@ -404,8 +405,8 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
       */
      function vestingEndsInDays() public view override returns (uint256) {
          if (block.timestamp < _vestingDeadline) {
-             return (_vestingDeadline.div(1 days))
-                 .sub(block.timestamp.div(1 days));
+             return VESTING_DURATION_DAYS
+                 .sub(daysSinceStart());
          } else {
              return 0;
          }

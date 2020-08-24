@@ -143,7 +143,7 @@ describe('XFI Token', () => {
         const vestingEndsInDaysBefore = Number(await token.vestingEndsInDays.call());
 
         daysSinceStartBefore.should.be.equal(0);
-        vestingEndsInDaysBefore.should.be.equal(184);
+        vestingEndsInDaysBefore.should.be.equal(182);
 
         const now             = Math.floor(Date.now() / 1000);
         const vestingDeadline = Number(await token.vestingDeadline.call());
