@@ -1,4 +1,4 @@
-/* global Web3 contract helpers TestRpc moveTime WEB3_PROVIDER_URL TEST_RPC_PORT */
+/* global Web3 contract helpers TestRpc moveTime rpc WEB3_PROVIDER_URL TEST_RPC_PORT */
 
 /**
  * Integration test which covers vesting of XFI tokens.
@@ -28,32 +28,6 @@ const Token = contract({abi: TokenJson.abi, unlinked_binary: TokenJson.bytecode}
 Token.setProvider(web3Provider);
 
 describe('Vesting', () => {
-    it('182 XFI Wei', async () => {
-        const amount = '182';
-
-        await runTestCase(amount);
-    });
-
-    it('1 XFI', async () => {
-        const amount = toWei('1');
-
-        await runTestCase(amount);
-    });
-
-    it('1000 XFI', async () => {
-        const amount = toWei('1000');
-
-        await runTestCase(amount);
-    });
-
-    it('549450.54945054945 XFI', async () => {
-        const amount = toWei('549450.54945054945');
-
-        await runTestCase(amount);
-    });
-});
-
-async function runTestCase(amount) {
     const creator = web3.eth.accounts.create();
     const minter  = web3.eth.accounts.create();
 
@@ -71,20 +45,65 @@ async function runTestCase(amount) {
         locked: false
     });
 
-    await testRpc.start(TEST_RPC_PORT);
+    let token;
+    let snapshotId;
 
-    const startDate = Math.floor((Date.now() / 1000) + ONE_DAY).toString();
+    before('start Test RPC', async () => {
+        await testRpc.start(TEST_RPC_PORT);
+    });
 
-    const token = await Token.new(startDate, {from: creator.address});
+    before('deploy', async () => {
+        const startDate = Math.floor((Date.now() / 1000) + ONE_DAY).toString();
 
-    const minterRole = await token.MINTER_ROLE.call();
+        token = await Token.new(startDate, {from: creator.address});
 
-    await token.grantRole(minterRole, minter.address, {from: creator.address});
+        const minterRole = await token.MINTER_ROLE.call();
 
-    const now = Math.floor(Date.now() / 1000);
+        await token.grantRole(minterRole, minter.address, {from: creator.address});
 
-    await moveTime(startDate - now + 1);
+        const now = Math.floor(Date.now() / 1000);
 
+        await moveTime(startDate - now + 1);
+    });
+
+    beforeEach('create a snapshot', async () => {
+        snapshotId = await snapshot();
+    });
+
+    afterEach('revert to last snapshot', async () => {
+        await revert(snapshotId);
+    });
+
+    it('182 XFI Wei', async () => {
+        const amount = '182';
+
+        await runTestCase(token, amount);
+    });
+
+    it('1 XFI', async () => {
+        const amount = toWei('1');
+
+        await runTestCase(token, amount);
+    });
+
+    it('1000 XFI', async () => {
+        const amount = toWei('1000');
+
+        await runTestCase(token, amount);
+    });
+
+    it('549450.54945054945 XFI', async () => {
+        const amount = toWei('549450.54945054945');
+
+        await runTestCase(token, amount);
+    });
+
+    after('stop Test RPC', () => {
+        testRpc.stop();
+    });
+});
+
+async function runTestCase(token, amount) {
     const vestingDurationDays = Number(await token.VESTING_DURATION_DAYS.call());
 
     const accounts = [];
@@ -107,7 +126,11 @@ async function runTestCase(amount) {
         // This mimicks the amount conversion during a swap in the Exchange contract.
         const convertedAmount = await token.convertAmountUsingReverseRatio.call(amount);
 
-        await token.mint(account.address, convertedAmount, {from: minter.address});
+        const minterRole = await token.MINTER_ROLE.call();
+
+        const minterAddress = await token.getRoleMember.call(minterRole, 0);
+
+        await token.mint(account.address, convertedAmount, {from: minterAddress});
 
         for (const account of accounts) {
             const expectedBalance = account.dailyBalances[i];
@@ -123,8 +146,6 @@ async function runTestCase(amount) {
 
         i = Number(await token.daysSinceStart.call());
     }
-
-    testRpc.stop();
 }
 
 /**
@@ -147,4 +168,23 @@ function calculateDailyBalances(amount, vestingDuration, day) {
     }
 
     return dailyBalances;
+}
+
+/**
+ * Snapshot the state of the blockchain at the current block.
+ *
+ * @return {Promise<String>} Snapshot ID.
+ */
+function snapshot() {
+    return rpc('evm_snapshot');
+}
+
+/**
+ * Revert the state of the blockchain to a previous snapshot.
+ *
+ * @param  {String}  snapshotId Snapshot ID.
+ * @return {Promise}
+ */
+async function revert(snapshotId) {
+    await rpc('evm_revert', [snapshotId]);
 }
