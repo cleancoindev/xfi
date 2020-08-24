@@ -223,7 +223,7 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
      * Requirements:
      * - Caller must have owner role.
      * - Vesting must be pending.
-     * - Deadline must be great than the current timestamp.
+     * - Deadline must be greater than the current timestamp.
      */
      function changeStartDate(uint256 startDate_) external override returns (bool) {
         require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), 'XFIToken: sender is not owner');
@@ -246,7 +246,7 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
       *
       * Requirements:
       * - Caller must have owner role.
-      * - Contract is stopped.
+      * - Transferring is stopped.
       */
      function startTransfers() external override returns (bool) {
          require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), 'XFIToken: sender is not owner');
@@ -266,7 +266,7 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
       *
       * Requirements:
       * - Caller must have owner role.
-      * - Contract isn't stopped.
+      * - Transferring isn't stopped.
       */
      function stopTransfers() external override returns (bool) {
          require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), 'XFIToken: sender is not owner');
@@ -346,7 +346,7 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
      }
 
      /**
-      * Returns the vesting deadline of the reserve XFI amount.
+      * Returns the date when freeze of the reserve XFI amount.
       */
      function reserveFrozenUntil() external view override returns (uint256) {
          return _reserveFrozenUntil;
@@ -374,7 +374,7 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
      }
 
      /**
-      * Convert input amount to the output amount using the vesting ratio
+      * Convert input amount to the output amount using the vesting reverse ratio
       * (days until vesting end / vesting duration).
       */
      function convertAmountUsingReverseRatio(uint256 amount) public view override returns (uint256) {
@@ -546,7 +546,7 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
     }
 
     /**
-     * Decrease amount balance of the `account`.
+     * Decrease balance of the `account`.
      *
      * The use of vested balance is in priority. Otherwise, the normal balance
      * will be used.
