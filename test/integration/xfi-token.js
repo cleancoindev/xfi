@@ -103,7 +103,7 @@ describe('XFI Token', () => {
         } catch (error) {
             if (!error.reason) { throw error; }
 
-            error.reason.should.be.equal('XFIToken: start date must be great than current timestamp');
+            error.reason.should.be.equal('XFIToken: start date must be greater than current timestamp');
         }
     });
 

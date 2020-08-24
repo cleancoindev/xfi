@@ -69,7 +69,7 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
      * Assigns vesting and freeze period dates.
      */
     constructor (uint256 startDate_) public {
-        require(startDate_ > block.timestamp, 'XFIToken: start date must be great than current timestamp');
+        require(startDate_ > block.timestamp, 'XFIToken: start date must be greater than current timestamp');
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
 
         _startDate = startDate_;
@@ -228,7 +228,7 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
      function changeStartDate(uint256 startDate_) external override returns (bool) {
         require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), 'XFIToken: sender is not owner');
         require(_startDate > block.timestamp, 'XFIToken: vesting has started');
-        require(startDate_ > block.timestamp, 'XFIToken: start date must be great than current timestamp');
+        require(startDate_ > block.timestamp, 'XFIToken: start date must be greater than current timestamp');
 
         _startDate = startDate_;
         _vestingDeadline = startDate_.add(VESTING_DURATION);
