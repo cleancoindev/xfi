@@ -139,22 +139,22 @@ describe('XFI Token', () => {
     });
 
     it('move time to the end of vesting period', async () => {
-        const daysSinceStartBefore    = Number(await token.daysSinceStart.call());
-        const vestingEndsInDaysBefore = Number(await token.vestingEndsInDays.call());
+        const daysSinceStartBefore = Number(await token.daysSinceStart.call());
+        const daysLeftDaysBefore   = Number(await token.daysLeft.call());
 
         daysSinceStartBefore.should.be.equal(0);
-        vestingEndsInDaysBefore.should.be.equal(182);
+        daysLeftDaysBefore.should.be.equal(182);
 
         const now             = Math.floor(Date.now() / 1000);
         const vestingDeadline = Number(await token.vestingDeadline.call());
 
         await moveTime(vestingDeadline - now + 1);
 
-        const daysSinceStartAfter    = Number(await token.daysSinceStart.call());
-        const vestingEndsInDaysAfter = Number(await token.vestingEndsInDays.call());
+        const daysSinceStartAfter = Number(await token.daysSinceStart.call());
+        const daysLeftDaysAfter   = Number(await token.daysLeft.call());
 
         daysSinceStartAfter.should.be.equal(182);
-        vestingEndsInDaysAfter.should.be.equal(0);
+        daysLeftDaysAfter.should.be.equal(0);
     });
 
     it('correct values of the default constants', async () => {

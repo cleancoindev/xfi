@@ -205,9 +205,9 @@ contract Exchange is AccessControl, ReentrancyGuard, IExchange {
      * Returns `amount` XFI estimation that user will receive per day after the swap of WINGS-XFI pair.
      */
     function estimateSwapWINGSForXFIPerDay(uint256 amountIn) external view override returns (uint256 amount) {
-        uint256[] memory amounts = estimateSwapETHForXFI(amountIn);
+        uint256[] memory amounts = estimateSwapWINGSForXFI(amountIn);
 
-        amount = amounts[1].div(_xfiToken.VESTING_DURATION());
+        amount = amounts[1].div(_xfiToken.VESTING_DURATION_DAYS());
     }
 
     /**
@@ -216,7 +216,7 @@ contract Exchange is AccessControl, ReentrancyGuard, IExchange {
     function estimateSwapETHForXFIPerDay(uint256 amountIn) external view override returns (uint256 amount) {
         uint256[] memory amounts = estimateSwapETHForXFI(amountIn);
 
-        amount = amounts[1].div(_xfiToken.VESTING_DURATION());
+        amount = amounts[1].div(_xfiToken.VESTING_DURATION_DAYS());
     }
 
     /**
@@ -227,8 +227,8 @@ contract Exchange is AccessControl, ReentrancyGuard, IExchange {
     }
 
     /**
-     * Returns maximum gas price for swap. If set, any transaction that has a
-     * gas price exceeding this limit will be reverted.
+     * Returns maximum gas price for swap. If set, any swap transaction that has
+     * a gas price exceeding this limit will be reverted.
      */
     function maxGasPrice() external view override returns (uint256) {
         return _maxGasPrice;

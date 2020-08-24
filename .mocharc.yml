@@ -1,4 +1,4 @@
 recursive: true
 exit: true
 bail: true
-timeout: 10000000
+timeout: 100000

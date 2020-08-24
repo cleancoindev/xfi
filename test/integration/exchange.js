@@ -333,13 +333,50 @@ describe('Ethereum XFI Exchange', () => {
         const amounts = await exchange.estimateSwapETHForXFI.call(amountIn);
 
         const expectedEthIn  = amountIn;
-        const expectedXfiOut = toStr(amountIn * WINGS_PER_ETH);
+        const expectedXfiOut = bigInt(amountIn)
+            .times(WINGS_PER_ETH)
+            .toString(10);
 
         const ethIn  = toStr(amounts[0]);
         const xfiOut = toStr(amounts[1]);
 
         ethIn.should.be.equal(expectedEthIn);
         xfiOut.should.be.equal(expectedXfiOut);
+    });
+
+    it('estimate amounts of swap WINGS-XFI per day', async () => {
+        const vestingDurationDays = Number(await xfiToken.VESTING_DURATION_DAYS.call());
+        const daysLeft            = Number(await xfiToken.daysLeft.call());
+
+        const amountIn = toWei('100');
+
+        const expectedAmountOutPerDay = bigInt(amountIn)
+            .times(daysLeft)
+            .divide(vestingDurationDays)
+            .divide(vestingDurationDays)
+            .toString(10);
+
+        const amountPerDay = toStr(await exchange.estimateSwapWINGSForXFIPerDay.call(amountIn));
+
+        amountPerDay.should.be.equal(expectedAmountOutPerDay);
+    });
+
+    it('estimate amounts of swap ETH-XFI per day', async () => {
+        const vestingDurationDays = toStr(await xfiToken.VESTING_DURATION_DAYS.call());
+        const daysLeft            = Number(await xfiToken.daysLeft.call());
+
+        const amountIn = toWei('1');
+
+        const expectedAmountOutPerDay = bigInt(amountIn)
+            .times(WINGS_PER_ETH)
+            .times(daysLeft)
+            .divide(vestingDurationDays)
+            .divide(vestingDurationDays)
+            .toString(10);
+
+        const amountPerDay = toStr(await exchange.estimateSwapETHForXFIPerDay.call(amountIn));
+
+        amountPerDay.should.be.equal(expectedAmountOutPerDay);
     });
 
     it('doesn\'t allow to swap before the start date', async () => {
@@ -361,10 +398,10 @@ describe('Ethereum XFI Exchange', () => {
         await moveTime(startDate - now + 1);
 
         const daysSinceStart = Number(await xfiToken.daysSinceStart.call());
-        const endsInDays     = Number(await xfiToken.vestingEndsInDays.call());
+        const daysLeft       = Number(await xfiToken.daysLeft.call());
 
         daysSinceStart.should.be.equal(0);
-        endsInDays.should.be.equal(182);
+        daysLeft.should.be.equal(182);
     });
 
     it('doesn\'t allow to set gas price without the owner access role', async () => {
@@ -1157,8 +1194,7 @@ describe('Ethereum XFI Exchange', () => {
          *
          * Summary
          *
-         * We made 5 swaps, each of which has expected output of 100 XFI tokens
-         * by the end of vesting period (500 XFI total).
+         * We made 5 swaps with total amount of around 500 XFI.
          *
          * The result is 498.351648351648351647 XFI.
          * The difference is 1.648351648351648353 XFI (0.33%).

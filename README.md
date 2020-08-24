@@ -25,11 +25,11 @@ This repository is a home for the XFI Token contract as well as the Ethereum XFI
 
 ## XFI Token
 
-`XFIToken` is an extended version of ERC20 standard. This extended version adds minting and token transfer management to the functionality described in the original EIP.
+`XFIToken` is an extended version of ERC20 standard. This extended version adds minting, vesting and token transfer management to the functionality described in the original EIP.
 
 ## Exchange
 
-`Exchange` is the Ethereum XFI Exchange which allows Ethereum accounts to convert their WINGS or ETH to XFI and vice versa.
+`Exchange` is the Ethereum XFI Exchange which allows Ethereum accounts to convert their WINGS or ETH to XFI.
 
 ### Methods
 
@@ -101,17 +101,17 @@ estimateSwapETHForXFIPerDay(amountIn)
 
 Returns whether swapping is stopped.
 
-*NOTE: To receive real-time updates on the status of the swaps, consider listening to `SwapsStarted` and `SwapsStopped` events.*
-
 Example:
 
 ```solidity
 isSwappingStopped()
 ```
 
+*NOTE: To receive real-time updates on the status of the swaps, consider listening to `SwapsStarted` and `SwapsStopped` events.*
+
 #### maxGasPrice
 
-Returns maximum gas price for swap. If set, any transaction that has a gas price exceeding this limit will be reverted.
+Returns maximum gas price for swap. If set, any swap transaction that has a gas price exceeding this limit will be reverted.
 
 Example:
 
@@ -183,6 +183,8 @@ cp .env.example .env
 - `CREATOR_ADDRESS` - address of the creator account.
 - `WINGS_TOKEN_ADDRESS` - address of the WINGS Token.
 - `UNISWAP_V2_ROUTER_ADDRESS` - address of the Uniswap V2 Router.
+- `START_DATE` - vesting start date (only XFI Token deploy).
+- `XFI_TOKEN_ADDRESS` - XFI token address (only Exchange deploy).
 
 Migrate contracts:
 
