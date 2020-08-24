@@ -1,5 +1,12 @@
 /* global artifacts */
 
+/**
+ * Deploy XFI Token instance.
+ *
+ * @module migrations/1_deploy_xfi
+ */
+
+
 'use strict';
 
 const XfiToken = artifacts.require('XFIToken');

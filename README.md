@@ -11,7 +11,10 @@ This repository is a home for the XFI Token contract as well as the Ethereum XFI
     - [Methods](#methods)
       - [estimateSwapWINGSForXFI](#estimateswapwingsforxfi)
       - [estimateSwapETHForXFI](#estimateswapethforxfi)
+      - [estimateSwapWINGSForXFIPerDay](#estimateswapwingsforxfiperday)
+      - [estimateSwapETHForXFIPerDay](#estimateswapethforxfiperday)
       - [isSwappingStopped](#isswappingstopped)
+      - [maxGasPrice](#maxgasprice)
       - [swapWINGSForXFI](#swapwingsforxfi)
       - [swapETHForXFI](#swapethforxfi)
   - [Requirements](#requirements)
@@ -40,6 +43,12 @@ Input:
 Output:
 - `amounts` (`uint256[]`) - estimation for swap of WINGS-XFI pair.
 
+Example:
+
+```solidity
+estimateSwapWINGSForXFI(amountIn)
+```
+
 #### estimateSwapETHForXFI
 
 Returns estimation for swap of ETH-XFI pair.
@@ -50,11 +59,65 @@ Input:
 Output:
 - `amounts` (`uint256[]`) - estimation for swap of ETH-XFI pair.
 
+Example:
+
+```solidity
+estimateSwapETHForXFI(amountIn)
+```
+
+#### estimateSwapWINGSForXFIPerDay
+
+Returns daily vesting estimation for swap of WINGS-XFI pair.
+
+Input:
+- `amountIn` (`uint256`) - amount of WINGS to swap.
+
+Output:
+- `amounts` (`uint256`) - estimated amount of XFI that will be vested each day of the vesting period.
+
+Example:
+
+```solidity
+estimateSwapWINGSForXFIPerDay(amountIn)
+```
+
+#### estimateSwapETHForXFIPerDay
+
+Returns daily vesting estimation for swap of ETH-XFI pair.
+
+Input:
+- `amountIn` (`uint256`) - amount of ETH to swap.
+
+Output:
+- `amounts` (`uint256[]`) - estimated amount of XFI that will be vested each day of the vesting period.
+
+Example:
+
+```solidity
+estimateSwapETHForXFIPerDay(amountIn)
+```
+
 #### isSwappingStopped
 
 Returns whether swapping is stopped.
 
 *NOTE: To receive real-time updates on the status of the swaps, consider listening to `SwapsStarted` and `SwapsStopped` events.*
+
+Example:
+
+```solidity
+isSwappingStopped()
+```
+
+#### maxGasPrice
+
+Returns maximum gas price for swap. If set, any transaction that has a gas price exceeding this limit will be reverted.
+
+Example:
+
+```solidity
+maxGasPrice()
+```
 
 #### swapWINGSForXFI
 
@@ -68,6 +131,12 @@ Input:
 Output:
 - `amounts` (`uint256[]`) - result of a swap of WINGS-XFI pair.
 
+Example:
+
+```solidity
+swapWINGSForXFI(amountIn)
+```
+
 #### swapETHForXFI
 
 Executes swap of ETH-XFI pair.
@@ -79,6 +148,12 @@ Input:
 
 Output:
 - `amounts` (`uint256[]`) - result of a swap of ETH-XFI pair.
+
+Example:
+
+```solidity
+swapETHForXFI(amountOutMin)
+```
 
 ## Requirements
 

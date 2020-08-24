@@ -227,7 +227,8 @@ contract Exchange is AccessControl, ReentrancyGuard, IExchange {
     }
 
     /**
-     * Returns maximum gas price for swap.
+     * Returns maximum gas price for swap. If set, any transaction that has a
+     * gas price exceeding this limit will be reverted.
      */
     function maxGasPrice() external view override returns (uint256) {
         return _maxGasPrice;

@@ -1,5 +1,11 @@
 /* global artifacts */
 
+/**
+ * Deploy Exchange instance.
+ *
+ * @module migrations/2_deploy_exchange
+ */
+
 'use strict';
 
 const XfiToken = artifacts.require('XFIToken');
