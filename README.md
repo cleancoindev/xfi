@@ -9,11 +9,11 @@ This repository is a home for the XFI Token contract as well as the Ethereum XFI
   - [XFI Token](#xfi-token)
     - [XFI Token Methods](#xfi-token-methods)
       - [isTransferringStopped](#istransferringstopped)
-      - [VESTING_DURATION](#vesting-duration)
-      - [VESTING_DURATION_DAYS](#vesting-duration-days)
-      - [RESERVE_FREEZE_DURATION](#reserve-freeze-duration)
-      - [RESERVE_FREEZE_DURATION_DAYS](#reserve-freeze-duration-days)
-      - [MAX_TOTAL_SUPPLY](#max-total-supply)
+      - [VESTING_DURATION](#vesting_duration)
+      - [VESTING_DURATION_DAYS](#vesting_duration_days)
+      - [RESERVE_FREEZE_DURATION](#reserve_freeze_duration)
+      - [RESERVE_FREEZE_DURATION_DAYS](#reserve_freeze_duration_days)
+      - [MAX_TOTAL_SUPPLY](#max_total_supply)
       - [startDate](#startdate)
       - [vestingDeadline](#vesting-deadline)
       - [reserveFrozenUntil](#reservefrozenuntil)
@@ -45,7 +45,7 @@ This repository is a home for the XFI Token contract as well as the Ethereum XFI
 
 `XFIToken` is an extended version of ERC20 standard. This extended version adds minting, vesting and token transfer management to the functionality described in the original EIP.
 
-### Methods
+### XFI Token Methods
 
 #### isTransferringStopped
 
@@ -285,7 +285,7 @@ spentVestedBalanceOf(account)
 
 `Exchange` is the Ethereum XFI Exchange which allows Ethereum accounts to convert their WINGS or ETH to XFI.
 
-### Methods
+### Exchange Methods
 
 #### estimateSwapWINGSForXFI
 
