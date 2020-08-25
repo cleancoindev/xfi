@@ -7,8 +7,26 @@ This repository is a home for the XFI Token contract as well as the Ethereum XFI
 - [XFI Token | Ethereum XFI Exchange](#xfi-token--ethereum-xfi-exchange)
   - [Contents](#contents)
   - [XFI Token](#xfi-token)
+    - [XFI Token Methods](#xfi-token-methods)
+      - [isTransferringStopped](#istransferringstopped)
+      - [VESTING_DURATION](#vesting-duration)
+      - [VESTING_DURATION_DAYS](#vesting-duration-days)
+      - [RESERVE_FREEZE_DURATION](#reserve-freeze-duration)
+      - [RESERVE_FREEZE_DURATION_DAYS](#reserve-freeze-duration-days)
+      - [MAX_TOTAL_SUPPLY](#max-total-supply)
+      - [startDate](#startdate)
+      - [vestingDeadline](#vesting-deadline)
+      - [reserveFrozenUntil](#reservefrozenuntil)
+      - [reserveAmount](#reserveamount)
+      - [daysSinceStart](#dayssincestart)
+      - [daysLeft](#daysleft)
+      - [convertAmountUsingRatio](#convertamountusingratio)
+      - [convertAmountUsingReverseRatio](#convertamountusingreverseratio)
+      - [totalVestedBalanceOf](#totalvestedbalanceof)
+      - [unspentVestedBalanceOf](#unspentvestedbalanceof)
+      - [spentVestedBalanceOf](#spentvestedbalanceof)
   - [Exchange](#exchange)
-    - [Methods](#methods)
+    - [Exchange Methods](#exchange-methods)
       - [estimateSwapWINGSForXFI](#estimateswapwingsforxfi)
       - [estimateSwapETHForXFI](#estimateswapethforxfi)
       - [estimateSwapWINGSForXFIPerDay](#estimateswapwingsforxfiperday)
@@ -27,6 +45,242 @@ This repository is a home for the XFI Token contract as well as the Ethereum XFI
 
 `XFIToken` is an extended version of ERC20 standard. This extended version adds minting, vesting and token transfer management to the functionality described in the original EIP.
 
+### Methods
+
+#### isTransferringStopped
+
+Returns whether transfering is stopped.
+
+Output:
+- `bool` - whether transferring is stopped.
+
+Example:
+
+```solidity
+isTransferringStopped()
+```
+
+#### VESTING_DURATION
+
+Returns vesting duration in seconds.
+
+Output:
+- `uint256` - vesting duration in seconds.
+
+Example:
+
+```solidity
+VESTING_DURATION()
+```
+
+#### VESTING_DURATION_DAYS
+
+Returns vesting duration in days.
+
+Output:
+- `uint256` - vesting duration in days.
+
+Example:
+
+```solidity
+VESTING_DURATION_DAYS()
+```
+
+#### RESERVE_FREEZE_DURATION
+
+Returns reserve freeze duration in seconds.
+
+Output:
+- `uint256` - reserve freeze duration in seconds.
+
+Example:
+
+```solidity
+RESERVE_FREEZE_DURATION()
+```
+
+#### RESERVE_FREEZE_DURATION_DAYS
+
+Returns reserve freeze duration in days.
+
+Output:
+- `uint256` - reserve freeze duration in days.
+
+Example:
+
+```solidity
+RESERVE_FREEZE_DURATION_DAYS()
+```
+
+#### MAX_TOTAL_SUPPLY
+
+Returns maximum total XFI supply.
+
+Output:
+- `uint256` - maximum total supply.
+
+Example:
+
+```solidity
+MAX_TOTAL_SUPPLY()
+```
+
+#### startDate
+
+Returns the vesting start.
+
+Output:
+- `uint256` - vesting start timestamp.
+
+Example:
+
+```solidity
+startDate()
+```
+
+#### vestingDeadline
+
+Returns the vesting deadline.
+
+Output:
+- `uint256` - vesting deadline timestamp.
+
+Example:
+
+```solidity
+vestingDeadline()
+```
+
+#### reserveFrozenUntil
+
+Returns the date when freeze of the reserve XFI amount.
+
+Output:
+- `uint256` - reserve frozen until timestamp.
+
+Example:
+
+```solidity
+reserveFrozenUntil()
+```
+
+#### reserveAmount
+
+Output:
+- `uint256` - reserve amount.
+
+Example:
+
+```solidity
+reserveAmount()
+```
+
+#### daysSinceStart
+
+Returns days since the vesting start.
+
+Output:
+- `uint256` - integer number of days since the vesting start.
+
+Example:
+
+```solidity
+daysSinceStart()
+```
+
+#### daysLeft
+
+Returns vesting days left.
+
+Output:
+- `uint256` - integer number of vesting days left.
+
+Example:
+
+```solidity
+daysLeft()
+```
+
+#### convertAmountUsingRatio
+
+Convert input amount to the output amount using the vesting ratio (days since vesting start / vesting duration).
+
+Input:
+- `uint256 amount` - amount to convert.
+
+Output:
+- `uint256` - converted amount.
+
+Example:
+
+```solidity
+convertAmountUsingRatio(amount)
+```
+
+#### convertAmountUsingReverseRatio
+
+Convert input amount to the output amount using the vesting reverse ratio (days until vesting end / vesting duration).
+
+Input:
+- `uint256 amount` - amount to convert.
+
+Output:
+- `uint256` - converted amount.
+
+Example:
+
+```solidity
+convertAmountUsingReverseRatio(amount)
+```
+
+#### totalVestedBalanceOf
+
+Returns total vested balance of the `account`.
+
+Input:
+- `address account` - owner address.
+
+Output:
+- `uint256` - amount of vested tokens owned by `account`.
+
+Example:
+
+```solidity
+totalVestedBalanceOf(account)
+```
+
+#### unspentVestedBalanceOf
+
+Returns unspent vested balance of the `account`.
+
+Input:
+- `address account` - owner address.
+
+Output:
+- `uint256` - amount of vested tokens unspent by `account`.
+
+Example:
+
+```solidity
+unspentVestedBalanceOf(account)
+```
+
+#### spentVestedBalanceOf
+
+Returns spent vested balance of the `account`.
+
+Input:
+- `address account` - owner address.
+
+Output:
+- `uint256` - amount of vested tokens spent by `account`.
+
+Example:
+
+```solidity
+spentVestedBalanceOf(account)
+```
+
 ## Exchange
 
 `Exchange` is the Ethereum XFI Exchange which allows Ethereum accounts to convert their WINGS or ETH to XFI.
@@ -38,10 +292,10 @@ This repository is a home for the XFI Token contract as well as the Ethereum XFI
 Returns estimation for swap of WINGS-XFI pair.
 
 Input:
-- `amountIn` (`uint256`) - amount of WINGS to swap.
+- `uint256 amountIn` - amount of WINGS to swap.
 
 Output:
-- `amounts` (`uint256[]`) - estimation for swap of WINGS-XFI pair.
+- `uint256[] amounts` - estimation for swap of WINGS-XFI pair.
 
 Example:
 
@@ -54,10 +308,10 @@ estimateSwapWINGSForXFI(amountIn)
 Returns estimation for swap of ETH-XFI pair.
 
 Input:
-- `amountIn` (`uint256`) - amount of ETH to swap.
+- `uint256 amountIn` - amount of ETH to swap.
 
 Output:
-- `amounts` (`uint256[]`) - estimation for swap of ETH-XFI pair.
+- `uint256[] amounts` - estimation for swap of ETH-XFI pair.
 
 Example:
 
@@ -70,10 +324,10 @@ estimateSwapETHForXFI(amountIn)
 Returns daily vesting estimation for swap of WINGS-XFI pair.
 
 Input:
-- `amountIn` (`uint256`) - amount of WINGS to swap.
+- `uint256 amountIn` - amount of WINGS to swap.
 
 Output:
-- `amounts` (`uint256`) - estimated amount of XFI that will be vested each day of the vesting period.
+- `uint256 amounts` - estimated amount of XFI that will be vested each day of the vesting period.
 
 Example:
 
@@ -86,10 +340,10 @@ estimateSwapWINGSForXFIPerDay(amountIn)
 Returns daily vesting estimation for swap of ETH-XFI pair.
 
 Input:
-- `amountIn` (`uint256`) - amount of ETH to swap.
+- `uint256 amountIn` - amount of ETH to swap.
 
 Output:
-- `amounts` (`uint256[]`) - estimated amount of XFI that will be vested each day of the vesting period.
+- `uint256[] amounts` - estimated amount of XFI that will be vested each day of the vesting period.
 
 Example:
 
@@ -126,10 +380,10 @@ Executes swap of WINGS-XFI pair.
 Emits a `SwapWINGSForXFI` event.
 
 Input:
-- `amountIn` (`uint256`) - amount of WINGS to swap.
+- `uint256 amountIn` - amount of WINGS to swap.
 
 Output:
-- `amounts` (`uint256[]`) - result of a swap of WINGS-XFI pair.
+- `uint256[] amounts` - result of a swap of WINGS-XFI pair.
 
 Example:
 
@@ -144,10 +398,10 @@ Executes swap of ETH-XFI pair.
 Emits a `SwapETHForXFI` event.
 
 Input:
-- `amountOutMin` (`uint256`) - minimum amount of XFI to receive.
+- `uint256 amountOutMin` - minimum amount of XFI to receive.
 
 Output:
-- `amounts` (`uint256[]`) - result of a swap of ETH-XFI pair.
+- `uint256[] amounts` - result of a swap of ETH-XFI pair.
 
 Example:
 
