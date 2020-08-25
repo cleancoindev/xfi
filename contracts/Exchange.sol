@@ -153,7 +153,7 @@ contract Exchange is AccessControl, ReentrancyGuard, IExchange {
     function withdrawWINGS(address to, uint256 amount) external override nonReentrant returns (bool) {
         require(to != address(0), 'Exchange: withdraw to the zero address');
         require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), 'Exchange: sender is not owner');
-        require(block.timestamp > _xfiToken.vestingDeadline(), 'Exchange: swapping has not ended');
+        require(block.timestamp > _xfiToken.vestingEnd(), 'Exchange: swapping has not ended');
 
         require(_wingsToken.transfer(to, amount), 'Exchange: WINGS transfer failed');
 
@@ -272,8 +272,8 @@ contract Exchange is AccessControl, ReentrancyGuard, IExchange {
      */
     function _beforeSwap() internal view {
         require(!_stopped, 'Exchange: swapping is stopped');
-        require(block.timestamp >= _xfiToken.startDate(), 'Exchange: swapping has not started');
-        require(block.timestamp <= _xfiToken.vestingDeadline(), 'Exchange: swapping has ended');
+        require(block.timestamp >= _xfiToken.vestingStart(), 'Exchange: swapping has not started');
+        require(block.timestamp <= _xfiToken.vestingEnd(), 'Exchange: swapping has ended');
 
         if (_maxGasPrice > 0) {
             require(tx.gasprice <= _maxGasPrice, 'Exchange: gas price exceeds the limit');
@@ -286,7 +286,7 @@ contract Exchange is AccessControl, ReentrancyGuard, IExchange {
     function _calculateSwapAmount(uint256 amount) internal view returns (uint256) {
         require(amount >= 182, 'Exchange: minimum XFI swap output amount is 182 * 10 ** -18');
 
-        if (block.timestamp < _xfiToken.vestingDeadline()) {
+        if (block.timestamp < _xfiToken.vestingEnd()) {
             uint256 amountOut = _xfiToken.convertAmountUsingReverseRatio(amount);
 
             return amountOut;

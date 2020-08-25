@@ -53,9 +53,9 @@ describe('Vesting', () => {
     });
 
     before('deploy', async () => {
-        const startDate = Math.floor((Date.now() / 1000) + ONE_DAY).toString();
+        const vestingStart = Math.floor((Date.now() / 1000) + ONE_DAY).toString();
 
-        token = await Token.new(startDate, {from: creator.address});
+        token = await Token.new(vestingStart, {from: creator.address});
 
         const minterRole = await token.MINTER_ROLE.call();
 
@@ -63,7 +63,7 @@ describe('Vesting', () => {
 
         const now = Math.floor(Date.now() / 1000);
 
-        await moveTime(startDate - now + 1);
+        await moveTime(vestingStart - now + 1);
     });
 
     beforeEach('create a snapshot', async () => {
@@ -116,7 +116,7 @@ async function runTestCase(token, amount) {
         accounts.push(account);
     }
 
-    let i = Number(await token.daysSinceStart.call());
+    let i = Number(await token.vestingDaysSinceStart.call());
 
     while (i < vestingDurationDays) {
         // console.log('Day:', i);
@@ -144,7 +144,7 @@ async function runTestCase(token, amount) {
 
         await moveTime(ONE_DAY * DAY_MULTIPLIER);
 
-        i = Number(await token.daysSinceStart.call());
+        i = Number(await token.vestingDaysSinceStart.call());
     }
 }
 

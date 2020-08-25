@@ -14,12 +14,12 @@ This repository is a home for the XFI Token contract as well as the Ethereum XFI
       - [RESERVE_FREEZE_DURATION](#reserve_freeze_duration)
       - [RESERVE_FREEZE_DURATION_DAYS](#reserve_freeze_duration_days)
       - [MAX_TOTAL_SUPPLY](#max_total_supply)
-      - [startDate](#startdate)
-      - [vestingDeadline](#vesting-deadline)
+      - [vestingStart](#vestingstart)
+      - [vestingEnd](#vestingend)
       - [reserveFrozenUntil](#reservefrozenuntil)
       - [reserveAmount](#reserveamount)
-      - [daysSinceStart](#dayssincestart)
-      - [daysLeft](#daysleft)
+      - [vestingDaysSinceStart](#vestingdayssincestart)
+      - [vestingDaysLeft](#vestingdaysleft)
       - [convertAmountUsingRatio](#convertamountusingratio)
       - [convertAmountUsingReverseRatio](#convertamountusingreverseratio)
       - [totalVestedBalanceOf](#totalvestedbalanceof)
@@ -125,7 +125,7 @@ Example:
 MAX_TOTAL_SUPPLY()
 ```
 
-#### startDate
+#### vestingStart
 
 Returns the vesting start.
 
@@ -135,20 +135,46 @@ Output:
 Example:
 
 ```solidity
-startDate()
+vestingStart()
 ```
 
-#### vestingDeadline
+#### vestingEnd
 
-Returns the vesting deadline.
+Returns the vesting end.
 
 Output:
-- `uint256` - vesting deadline timestamp.
+- `uint256` - vesting end timestamp.
 
 Example:
 
 ```solidity
-vestingDeadline()
+vestingEnd()
+```
+
+#### vestingDaysSinceStart
+
+Returns days since the vesting start.
+
+Output:
+- `uint256` - integer number of days since the vesting start.
+
+Example:
+
+```solidity
+vestingDaysSinceStart()
+```
+
+#### vestingDaysLeft
+
+Returns vesting days left.
+
+Output:
+- `uint256` - integer number of vesting days left.
+
+Example:
+
+```solidity
+vestingDaysLeft()
 ```
 
 #### reserveFrozenUntil
@@ -173,32 +199,6 @@ Example:
 
 ```solidity
 reserveAmount()
-```
-
-#### daysSinceStart
-
-Returns days since the vesting start.
-
-Output:
-- `uint256` - integer number of days since the vesting start.
-
-Example:
-
-```solidity
-daysSinceStart()
-```
-
-#### daysLeft
-
-Returns vesting days left.
-
-Output:
-- `uint256` - integer number of vesting days left.
-
-Example:
-
-```solidity
-daysLeft()
 ```
 
 #### convertAmountUsingRatio

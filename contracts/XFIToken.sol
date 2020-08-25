@@ -56,9 +56,9 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
 
     uint256 private _totalSupply;
 
-    uint256 private _startDate;
+    uint256 private _vestingStart;
 
-    uint256 private _vestingDeadline;
+    uint256 private _vestingEnd;
 
     uint256 private _reserveFrozenUntil;
 
@@ -68,13 +68,13 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
      * Sets {DEFAULT_ADMIN_ROLE} (alias `owner`) role for caller.
      * Assigns vesting and freeze period dates.
      */
-    constructor (uint256 startDate_) public {
-        require(startDate_ > block.timestamp, 'XFIToken: start date must be greater than current timestamp');
+    constructor (uint256 vestingStart_) public {
+        require(vestingStart_ > block.timestamp, 'XFIToken: vesting start must be greater than current timestamp');
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
 
-        _startDate = startDate_;
-        _vestingDeadline = startDate_.add(VESTING_DURATION);
-        _reserveFrozenUntil = startDate_.add(RESERVE_FREEZE_DURATION);
+        _vestingStart = vestingStart_;
+        _vestingEnd = vestingStart_.add(VESTING_DURATION);
+        _reserveFrozenUntil = vestingStart_.add(RESERVE_FREEZE_DURATION);
     }
 
     /**
@@ -216,25 +216,25 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
     }
 
     /**
-     * Change start date and deadline timestamps.
+     * Change vesting start and end timestamps.
      *
-     * Emits a {StartDateChanged} event.
+     * Emits a {VestingStartChanged} event.
      *
      * Requirements:
      * - Caller must have owner role.
      * - Vesting must be pending.
-     * - Deadline must be greater than the current timestamp.
+     * - `vestingStart_` must be greater than the current timestamp.
      */
-     function changeStartDate(uint256 startDate_) external override returns (bool) {
+     function changeVestingStart(uint256 vestingStart_) external override returns (bool) {
         require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), 'XFIToken: sender is not owner');
-        require(_startDate > block.timestamp, 'XFIToken: vesting has started');
-        require(startDate_ > block.timestamp, 'XFIToken: start date must be greater than current timestamp');
+        require(_vestingStart > block.timestamp, 'XFIToken: vesting has started');
+        require(vestingStart_ > block.timestamp, 'XFIToken: vesting start must be greater than current timestamp');
 
-        _startDate = startDate_;
-        _vestingDeadline = startDate_.add(VESTING_DURATION);
-        _reserveFrozenUntil = startDate_.add(RESERVE_FREEZE_DURATION);
+        _vestingStart = vestingStart_;
+        _vestingEnd = vestingStart_.add(VESTING_DURATION);
+        _reserveFrozenUntil = vestingStart_.add(RESERVE_FREEZE_DURATION);
 
-        emit StartDateChanged(startDate_, _vestingDeadline, _reserveFrozenUntil);
+        emit VestingStartChanged(vestingStart_, _vestingEnd, _reserveFrozenUntil);
 
         return true;
      }
@@ -332,17 +332,17 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
      }
 
      /**
-      * Returns the start date of the vesting.
+      * Returns the vesting start.
       */
-     function startDate() external view override returns (uint256) {
-         return _startDate;
+     function vestingStart() external view override returns (uint256) {
+         return _vestingStart;
      }
 
      /**
-      * Returns the vesting deadline.
+      * Returns the vesting end.
       */
-     function vestingDeadline() external view override returns (uint256) {
-         return _vestingDeadline;
+     function vestingEnd() external view override returns (uint256) {
+         return _vestingEnd;
      }
 
      /**
@@ -364,9 +364,9 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
       * (days since vesting start / vesting duration).
       */
      function convertAmountUsingRatio(uint256 amount) public view override returns (uint256) {
-         if (daysSinceStart() <= VESTING_DURATION_DAYS) {
+         if (vestingDaysSinceStart() <= VESTING_DURATION_DAYS) {
              return amount
-                 .mul(daysSinceStart())
+                 .mul(vestingDaysSinceStart())
                  .div(VESTING_DURATION_DAYS);
          } else {
              return amount;
@@ -378,9 +378,9 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
       * (days until vesting end / vesting duration).
       */
      function convertAmountUsingReverseRatio(uint256 amount) public view override returns (uint256) {
-         if (daysSinceStart() > 0) {
+         if (vestingDaysSinceStart() > 0) {
              return amount
-                 .mul(daysLeft())
+                 .mul(vestingDaysLeft())
                  .div(VESTING_DURATION_DAYS);
          } else {
              return amount;
@@ -390,10 +390,10 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
      /**
       * Returns days since the vesting start.
       */
-     function daysSinceStart() public view override returns (uint256) {
-         if (block.timestamp > _startDate) {
+     function vestingDaysSinceStart() public view override returns (uint256) {
+         if (block.timestamp > _vestingStart) {
              return block.timestamp
-                 .sub(_startDate)
+                 .sub(_vestingStart)
                  .div(1 days);
          } else {
              return 0;
@@ -403,10 +403,10 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
      /**
       * Returns vesting days left.
       */
-     function daysLeft() public view override returns (uint256) {
-         if (block.timestamp < _vestingDeadline) {
+     function vestingDaysLeft() public view override returns (uint256) {
+         if (block.timestamp < _vestingEnd) {
              return VESTING_DURATION_DAYS
-                 .sub(daysSinceStart());
+                 .sub(vestingDaysSinceStart());
          } else {
              return 0;
          }
