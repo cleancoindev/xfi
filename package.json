@@ -7,7 +7,7 @@
     "test": "test"
   },
   "scripts": {
-    "compile": "truffle compile",
+    "compile": "NODE_PATH=. truffle compile",
     "test": "NODE_PATH=. mocha test/index"
   },
   "author": "",
