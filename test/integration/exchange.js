@@ -924,6 +924,56 @@ describe('Ethereum XFI Exchange', () => {
         }
     });
 
+    it('doesn\'t allow to migrate vesting balance when migrating is disallowed', async () => {
+        const BYTE_ADDRESS = '0x' + '1'.repeat(64);
+
+        try {
+            await xfiToken.migrateVestingBalance(BYTE_ADDRESS, {from: secondUser.address});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('XFIToken: migrating is disallowed');
+        }
+    });
+
+    it('doesn\'t allow to allow migrations without owner access role', async () => {
+        try {
+            await xfiToken.allowMigrations({from: maliciousUser.address});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('XFIToken: sender is not owner');
+        }
+    });
+
+    it('allow migrations', async () => {
+        const migratingAllowedBefore = await xfiToken.isMigratingAllowed.call();
+
+        migratingAllowedBefore.should.be.false;
+
+        await xfiToken.allowMigrations({from: creator.address});
+
+        const migratingAllowedAfter = await xfiToken.isMigratingAllowed.call();
+
+        migratingAllowedAfter.should.be.true;
+    });
+
+    it('doesn\'t allow to allow migrations when migraitons are allowed', async () => {
+        try {
+            await xfiToken.allowMigrations({from: creator.address});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('XFIToken: migrating is allowed');
+        }
+    });
+
     it('second user migrates vesting balance', async () => {
         const BYTE_ADDRESS = '0x' + '1'.repeat(64);
 

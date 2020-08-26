@@ -64,6 +64,8 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
 
     bool private _stopped = false;
 
+    bool private _migratingAllowed = false;
+
     /**
      * Sets {DEFAULT_ADMIN_ROLE} (alias `owner`) role for caller.
      * Assigns vesting and freeze period dates.
@@ -280,6 +282,26 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
     }
 
     /**
+     * Start migrations.
+     *
+     * Emits a {MigrationsStarted} event.
+     *
+     * Requirements:
+     * - Caller must have owner role.
+     * - Migrating isn't allowed.
+     */
+    function allowMigrations() external override returns (bool) {
+        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), 'XFIToken: sender is not owner');
+        require(!_migratingAllowed, 'XFIToken: migrating is allowed');
+
+        _migratingAllowed = true;
+
+        emit MigrationsAllowed();
+
+        return true;
+    }
+
+    /**
      * Withdraws reserve amount to a destination specified as `to`.
      *
      * Emits a {ReserveWithdrawal} event.
@@ -314,6 +336,7 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
      */
     function migrateVestingBalance(bytes32 to) external override nonReentrant returns (bool) {
         require(to != bytes32(0), 'XFIToken: migrate to the zero bytes');
+        require(_migratingAllowed, 'XFIToken: migrating is disallowed');
 
         uint256 vestingBalance = _vestingBalances[msg.sender];
 
@@ -334,6 +357,8 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
         _spentVestedBalances[msg.sender] = 0;
 
         emit VestingBalanceMigrated(msg.sender, to, vestingDaysLeft(), vestingBalance);
+
+        return true;
     }
 
     /**
@@ -390,6 +415,13 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
      */
     function isTransferringStopped() external view override returns (bool) {
         return _stopped;
+    }
+
+    /**
+     * Returns whether migrating is allowed.
+     */
+    function isMigratingAllowed() external view override returns (bool) {
+        return _migratingAllowed;
     }
 
     /**
