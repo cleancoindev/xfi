@@ -12,6 +12,7 @@ interface IXFIToken is IERC20 {
     event TransfersStarted();
     event TransfersStopped();
     event ReserveWithdrawal(address indexed to, uint256 amount);
+    event VestingBalanceMigrated(address indexed from, bytes32 to, uint256 vestingDaysLeft, uint256 vestingBalance);
 
     function isTransferringStopped() external view returns (bool);
     function VESTING_DURATION() external view returns (uint256);
@@ -40,4 +41,5 @@ interface IXFIToken is IERC20 {
     function stopTransfers() external returns (bool);
     function changeVestingStart(uint256 newVestingStart) external returns (bool);
     function withdrawReserve(address to) external returns (bool);
+    function migrateVestingBalance(bytes32 to) external returns (bool);
 }

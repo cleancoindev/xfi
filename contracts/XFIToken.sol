@@ -304,6 +304,31 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
     }
 
     /**
+     * Migrate vesting balance to the Dfinance blockchain.
+     *
+     * Emits a {VestingBalanceMigrated} event.
+     *
+     * Requirements:
+     * - `to` is not the zero bytes.
+     * - TBD
+     */
+    function migrateVestingBalance(bytes32 to) external override nonReentrant returns (bool) {
+        require(to != bytes32(0), 'XFIToken: migrate to the zero bytes');
+
+        /*
+            TODO
+            Checks.
+            Make vested balance persistent.
+            Reset remaining vesting balance.
+            Update total supply if needed.
+        */
+
+        uint256 vestingBalance = _vestingBalances[msg.sender];
+
+        emit VestingBalanceMigrated(msg.sender, to, vestingDaysLeft(), vestingBalance);
+    }
+
+    /**
      * Returns name of the token.
      */
     function name() external view override returns (string memory) {
