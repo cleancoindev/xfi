@@ -380,7 +380,7 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
      function convertAmountUsingReverseRatio(uint256 amount) public view override returns (uint256) {
          if (vestingDaysSinceStart() > 0) {
              return amount
-                 .mul(vestingDaysLeft())
+                 .mul(vestingDaysLeft().add(1))
                  .div(VESTING_DURATION_DAYS);
          } else {
              return amount;
@@ -394,7 +394,8 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
          if (block.timestamp > _vestingStart) {
              return block.timestamp
                  .sub(_vestingStart)
-                 .div(1 days);
+                 .div(1 days)
+                 .add(1);
          } else {
              return 0;
          }

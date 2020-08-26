@@ -153,7 +153,7 @@ describe('XFI Token', () => {
         const vestingDaysSinceStartAfter = Number(await token.vestingDaysSinceStart.call());
         const vestingDaysLeftAfter       = Number(await token.vestingDaysLeft.call());
 
-        vestingDaysSinceStartAfter.should.be.equal(182);
+        vestingDaysSinceStartAfter.should.be.equal(183);
         vestingDaysLeftAfter.should.be.equal(0);
     });
 

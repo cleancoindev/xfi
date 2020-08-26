@@ -38,7 +38,7 @@ exports.convertAmountUsingRatio = function convertAmountUsingRatio(amount, vesti
 exports.convertAmountUsingReverseRatio = function convertAmountUsingReverseRatio(amount, vestingDuration, day) {
     if (day > 0) {
         return bigInt(amount)
-            .times(vestingDuration - day)
+            .times(vestingDuration - day + 1)
             .divide(vestingDuration)
             .toString(10);
     } else {
