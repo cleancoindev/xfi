@@ -225,7 +225,7 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
      * - Vesting must be pending.
      * - `vestingStart_` must be greater than the current timestamp.
      */
-     function changeVestingStart(uint256 vestingStart_) external override returns (bool) {
+    function changeVestingStart(uint256 vestingStart_) external override returns (bool) {
         require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), 'XFIToken: sender is not owner');
         require(_vestingStart > block.timestamp, 'XFIToken: vesting has started');
         require(vestingStart_ > block.timestamp, 'XFIToken: vesting start must be greater than current timestamp');
@@ -237,226 +237,226 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
         emit VestingStartChanged(vestingStart_, _vestingEnd, _reserveFrozenUntil);
 
         return true;
-     }
+    }
 
-     /**
-      * Starts all transfers.
-      *
-      * Emits a {TransfersStarted} event.
-      *
-      * Requirements:
-      * - Caller must have owner role.
-      * - Transferring is stopped.
-      */
-     function startTransfers() external override returns (bool) {
-         require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), 'XFIToken: sender is not owner');
-         require(_stopped, 'XFIToken: transferring is not stopped');
+    /**
+     * Starts all transfers.
+     *
+     * Emits a {TransfersStarted} event.
+     *
+     * Requirements:
+     * - Caller must have owner role.
+     * - Transferring is stopped.
+     */
+    function startTransfers() external override returns (bool) {
+        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), 'XFIToken: sender is not owner');
+        require(_stopped, 'XFIToken: transferring is not stopped');
 
-         _stopped = false;
+        _stopped = false;
 
-         emit TransfersStarted();
+        emit TransfersStarted();
 
-         return true;
-     }
+        return true;
+    }
 
-     /**
-      * Stops all transfers.
-      *
-      * Emits a {TransfersStopped} event.
-      *
-      * Requirements:
-      * - Caller must have owner role.
-      * - Transferring isn't stopped.
-      */
-     function stopTransfers() external override returns (bool) {
-         require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), 'XFIToken: sender is not owner');
-         require(!_stopped, 'XFIToken: transferring is stopped');
+    /**
+     * Stops all transfers.
+     *
+     * Emits a {TransfersStopped} event.
+     *
+     * Requirements:
+     * - Caller must have owner role.
+     * - Transferring isn't stopped.
+     */
+    function stopTransfers() external override returns (bool) {
+        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), 'XFIToken: sender is not owner');
+        require(!_stopped, 'XFIToken: transferring is stopped');
 
-         _stopped = true;
+        _stopped = true;
 
-         emit TransfersStopped();
+        emit TransfersStopped();
 
-         return true;
-     }
+        return true;
+    }
 
-     /**
-      * Withdraws reserve amount to a destination specified as `to`.
-      *
-      * Emits a {ReserveWithdrawal} event.
-      *
-      * Requirements:
-      * - `to` cannot be the zero address.
-      * - Caller must have owner role.
-      * - Reserve has unfrozen.
-      */
-     function withdrawReserve(address to) external override nonReentrant returns (bool) {
-         require(to != address(0), 'XFIToken: withdraw to the zero address');
-         require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), 'XFIToken: sender is not owner');
-         require(block.timestamp > _reserveFrozenUntil, 'XFIToken: reserve is frozen');
+    /**
+     * Withdraws reserve amount to a destination specified as `to`.
+     *
+     * Emits a {ReserveWithdrawal} event.
+     *
+     * Requirements:
+     * - `to` cannot be the zero address.
+     * - Caller must have owner role.
+     * - Reserve has unfrozen.
+     */
+    function withdrawReserve(address to) external override nonReentrant returns (bool) {
+        require(to != address(0), 'XFIToken: withdraw to the zero address');
+        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), 'XFIToken: sender is not owner');
+        require(block.timestamp > _reserveFrozenUntil, 'XFIToken: reserve is frozen');
 
-         uint256 amount = reserveAmount();
+        uint256 amount = reserveAmount();
 
-         _mint(to, amount);
+        _mint(to, amount);
 
-         emit ReserveWithdrawal(to, amount);
+        emit ReserveWithdrawal(to, amount);
 
-         return true;
-     }
+        return true;
+    }
 
-     /**
-      * Returns name of the token.
-      */
-     function name() external view override returns (string memory) {
-         return _name;
-     }
+    /**
+     * Returns name of the token.
+     */
+    function name() external view override returns (string memory) {
+        return _name;
+    }
 
-     /**
-      * Returns symbol of the token.
-      */
-     function symbol() external view override returns (string memory) {
-         return _symbol;
-     }
+    /**
+     * Returns symbol of the token.
+     */
+    function symbol() external view override returns (string memory) {
+        return _symbol;
+    }
 
-     /**
-      * Returns number of decimals of the token.
-      */
-     function decimals() external view override returns (uint8) {
-         return _decimals;
-     }
+    /**
+     * Returns number of decimals of the token.
+     */
+    function decimals() external view override returns (uint8) {
+        return _decimals;
+    }
 
-     /**
-      * Returnes amount of `owner`'s tokens that `spender` is allowed to transfer.
-      */
-     function allowance(address owner, address spender) external view override returns (uint256) {
-         return _allowances[owner][spender];
-     }
+    /**
+     * Returnes amount of `owner`'s tokens that `spender` is allowed to transfer.
+     */
+    function allowance(address owner, address spender) external view override returns (uint256) {
+        return _allowances[owner][spender];
+    }
 
-     /**
-      * Returns the vesting start.
-      */
-     function vestingStart() external view override returns (uint256) {
-         return _vestingStart;
-     }
+    /**
+     * Returns the vesting start.
+     */
+    function vestingStart() external view override returns (uint256) {
+        return _vestingStart;
+    }
 
-     /**
-      * Returns the vesting end.
-      */
-     function vestingEnd() external view override returns (uint256) {
-         return _vestingEnd;
-     }
+    /**
+     * Returns the vesting end.
+     */
+    function vestingEnd() external view override returns (uint256) {
+        return _vestingEnd;
+    }
 
-     /**
-      * Returns the date when freeze of the reserve XFI amount.
-      */
-     function reserveFrozenUntil() external view override returns (uint256) {
-         return _reserveFrozenUntil;
-     }
+    /**
+     * Returns the date when freeze of the reserve XFI amount.
+     */
+    function reserveFrozenUntil() external view override returns (uint256) {
+        return _reserveFrozenUntil;
+    }
 
-     /**
-      * Returns whether transfering is stopped.
-      */
-     function isTransferringStopped() external view override returns (bool) {
-         return _stopped;
-     }
+    /**
+     * Returns whether transfering is stopped.
+     */
+    function isTransferringStopped() external view override returns (bool) {
+        return _stopped;
+    }
 
-     /**
-      * Convert input amount to the output amount using the vesting ratio
-      * (days since vesting start / vesting duration).
-      */
-     function convertAmountUsingRatio(uint256 amount) public view override returns (uint256) {
-         uint256 convertedAmount = amount
-             .mul(vestingDaysSinceStart())
-             .div(VESTING_DURATION_DAYS);
+    /**
+     * Convert input amount to the output amount using the vesting ratio
+     * (days since vesting start / vesting duration).
+     */
+    function convertAmountUsingRatio(uint256 amount) public view override returns (uint256) {
+        uint256 convertedAmount = amount
+            .mul(vestingDaysSinceStart())
+            .div(VESTING_DURATION_DAYS);
 
-         return (convertedAmount < amount)
+        return (convertedAmount < amount)
             ? convertedAmount
             : amount;
-     }
+    }
 
-     /**
-      * Convert input amount to the output amount using the vesting reverse
-      * ratio (days until vesting end / vesting duration).
-      */
-     function convertAmountUsingReverseRatio(uint256 amount) public view override returns (uint256) {
-         if (vestingDaysSinceStart() > 0) {
-             return amount
-                 .mul(vestingDaysLeft().add(1))
-                 .div(VESTING_DURATION_DAYS);
-         } else {
-             return amount;
-         }
-     }
+    /**
+     * Convert input amount to the output amount using the vesting reverse
+     * ratio (days until vesting end / vesting duration).
+     */
+    function convertAmountUsingReverseRatio(uint256 amount) public view override returns (uint256) {
+        if (vestingDaysSinceStart() > 0) {
+            return amount
+                .mul(vestingDaysLeft().add(1))
+                .div(VESTING_DURATION_DAYS);
+        } else {
+            return amount;
+        }
+    }
 
-     /**
-      * Returns days since the vesting start.
-      */
-     function vestingDaysSinceStart() public view override returns (uint256) {
-         if (block.timestamp > _vestingStart) {
-             return block.timestamp
-                 .sub(_vestingStart)
-                 .div(1 days)
-                 .add(1);
-         } else {
-             return 0;
-         }
-     }
+    /**
+     * Returns days since the vesting start.
+     */
+    function vestingDaysSinceStart() public view override returns (uint256) {
+        if (block.timestamp > _vestingStart) {
+            return block.timestamp
+                .sub(_vestingStart)
+                .div(1 days)
+                .add(1);
+        } else {
+            return 0;
+        }
+    }
 
-     /**
-      * Returns vesting days left.
-      */
-     function vestingDaysLeft() public view override returns (uint256) {
-         if (block.timestamp < _vestingEnd) {
-             return VESTING_DURATION_DAYS
-                 .sub(vestingDaysSinceStart());
-         } else {
-             return 0;
-         }
-     }
+    /**
+     * Returns vesting days left.
+     */
+    function vestingDaysLeft() public view override returns (uint256) {
+        if (block.timestamp < _vestingEnd) {
+            return VESTING_DURATION_DAYS
+                .sub(vestingDaysSinceStart());
+        } else {
+            return 0;
+        }
+    }
 
-     /**
-      * Returns total supply of the token.
-      */
-     function totalSupply() public view override returns (uint256) {
-         return convertAmountUsingRatio(_totalSupply);
-     }
+    /**
+     * Returns total supply of the token.
+     */
+    function totalSupply() public view override returns (uint256) {
+        return convertAmountUsingRatio(_totalSupply);
+    }
 
-     /**
-      * Returns total vested balance of the `account`.
-      */
-     function totalVestedBalanceOf(address account) public view override returns (uint256) {
-         return convertAmountUsingRatio(_vestingBalances[account]);
-     }
+    /**
+     * Returns total vested balance of the `account`.
+     */
+    function totalVestedBalanceOf(address account) public view override returns (uint256) {
+        return convertAmountUsingRatio(_vestingBalances[account]);
+    }
 
-     /**
-      * Returns unspent vested balance of the `account`.
-      */
-     function unspentVestedBalanceOf(address account) public view override returns (uint256) {
-         return totalVestedBalanceOf(account)
+    /**
+     * Returns unspent vested balance of the `account`.
+     */
+    function unspentVestedBalanceOf(address account) public view override returns (uint256) {
+        return totalVestedBalanceOf(account)
             .sub(_spentVestedBalances[account]);
-     }
+    }
 
-     /**
-      * Returns spent vested balance of the `account`.
-      */
-     function spentVestedBalanceOf(address account) public view override returns (uint256) {
-         return _spentVestedBalances[account];
-     }
+    /**
+     * Returns spent vested balance of the `account`.
+     */
+    function spentVestedBalanceOf(address account) public view override returns (uint256) {
+        return _spentVestedBalances[account];
+    }
 
-     /**
-      * Returns token balance of the `account`.
-      */
-     function balanceOf(address account) public view override returns (uint256) {
-         return unspentVestedBalanceOf(account)
+    /**
+     * Returns token balance of the `account`.
+     */
+    function balanceOf(address account) public view override returns (uint256) {
+        return unspentVestedBalanceOf(account)
             .add(_balances[account]);
-     }
+    }
 
-     /**
-      * Returns reserve amount.
-      */
-     function reserveAmount() public view override returns (uint256) {
-         return MAX_TOTAL_SUPPLY
+    /**
+     * Returns reserve amount.
+     */
+    function reserveAmount() public view override returns (uint256) {
+        return MAX_TOTAL_SUPPLY
             .sub(totalSupply());
-     }
+    }
 
     /**
      * Moves tokens `amount` from `sender` to `recipient`.
