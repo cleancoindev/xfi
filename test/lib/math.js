@@ -17,14 +17,14 @@ const bigInt = require('big-integer');
  * @return {String}                 Converted amount.
  */
 exports.convertAmountUsingRatio = function convertAmountUsingRatio(amount, vestingDuration, day) {
-    if (day <= vestingDuration) {
-        return bigInt(amount)
-            .times(day)
-            .divide(vestingDuration)
-            .toString(10);
-    } else {
-        return amount;
-    }
+    const convertedAmount = bigInt(amount)
+        .times(day)
+        .divide(vestingDuration)
+        .toString(10);
+
+    return bigInt(convertedAmount).lt(amount)
+        ? convertedAmount
+        : amount;
 };
 
 /**
