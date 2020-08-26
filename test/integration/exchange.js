@@ -773,7 +773,7 @@ describe('Ethereum XFI Exchange', () => {
         const secondUserUnspentVestedBalanceBefore = toStr(await xfiToken.unspentVestedBalanceOf.call(secondUser.address));
         const secondUserSpentVestedBalanceBefore   = toStr(await xfiToken.spentVestedBalanceOf.call(secondUser.address));
 
-        const amount = toWei('1');
+        const amount = toWei('2');
 
         const expectedFirstUserBalance              = bigInt(firstUserBalanceBefore)
             .minus(amount)
@@ -846,7 +846,7 @@ describe('Ethereum XFI Exchange', () => {
         // Expected values before the swap.
         const expectedXfiTotalSupplyBefore       = await calculateXfiTotalSupply(xfiToken, absoluteXfiTotalSupply);
         const expectedUserWingsBalanceBefore     = toWei('200');
-        const expectedUserXfiBalanceBefore       = '0';
+        const expectedUserXfiBalanceBefore       = toWei('1');
         const expectedExchangeWingsBalanceBefore = toWei('300');
 
         // Update the absolute XFI total supply.
@@ -908,6 +908,75 @@ describe('Ethereum XFI Exchange', () => {
         firstLog.args.sender.should.be.equal(secondUser.address);
         toStr(firstLog.args.amountIn).should.be.equal(amountIn);
         toStr(firstLog.args.amountOut).should.be.equal(expectedAmountOut);
+    });
+
+    it('doesn\'t allow to migrate vesting balance to zero address', async () => {
+        const ZERO_BYTES = '0x' + '0'.repeat(64);
+
+        try {
+            await xfiToken.migrateVestingBalance(ZERO_BYTES, {from: secondUser.address});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('XFIToken: migrate to the zero bytes');
+        }
+    });
+
+    it('second user migrates vesting balance', async () => {
+        const BYTE_ADDRESS = '0x' + '1'.repeat(64);
+
+        const vestingDuration = Number(await xfiToken.VESTING_DURATION.call()) / ONE_DAY;
+
+        // Update the absolute XFI total supply.
+
+        const expectedVestingBalance = convertAmountUsingReverseRatio(toWei('200'), vestingDuration, 2);
+        const expectedVestedBalance  = convertAmountUsingRatio(expectedVestingBalance, vestingDuration, 2);
+
+        absoluteXfiTotalSupply = bigInt(absoluteXfiTotalSupply)
+            .plus(expectedVestedBalance)
+            .minus(expectedVestingBalance)
+            .toString(10);
+
+        /* ▲ Before migration ▲ */
+
+        await xfiToken.migrateVestingBalance(BYTE_ADDRESS, {from: secondUser.address});
+
+        /* ▼ After migration ▼ */
+
+        // Check balances.
+
+        const balance              = toStr(await xfiToken.balanceOf.call(secondUser.address));
+        const totalVestedBalance   = toStr(await xfiToken.totalVestedBalanceOf.call(secondUser.address));
+        const unspentVestedBalance = toStr(await xfiToken.unspentVestedBalanceOf.call(secondUser.address));
+        const spentVestedBalance   = toStr(await xfiToken.spentVestedBalanceOf.call(secondUser.address));
+
+        const expectedBalance              = bigInt(expectedVestedBalance)
+            .add(toWei('1'))
+            .toString(10);
+        const expectedTotalVestedBalance   = '0';
+        const expectedUnspentVestedBalance = '0';
+        const expectedSpentVestedBalance   = '0';
+
+        balance.should.be.equal(expectedBalance);
+        totalVestedBalance.should.be.equal(expectedTotalVestedBalance);
+        unspentVestedBalance.should.be.equal(expectedUnspentVestedBalance);
+        spentVestedBalance.should.be.equal(expectedSpentVestedBalance);
+    });
+
+    it('doesn\'t allow to migrate vesting balance that is equal to zero', async () => {
+        const BYTE_ADDRESS = '0x' + '1'.repeat(64);
+
+        try {
+            await xfiToken.migrateVestingBalance(BYTE_ADDRESS, {from: secondUser.address});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('XFIToken: vesting balance is zero');
+        }
     });
 
     it('doesn\'t allow ex-owner to stop swaps without owner access role', async () => {
@@ -1045,16 +1114,16 @@ describe('Ethereum XFI Exchange', () => {
 
         const expectedFirstUserBalance              = bigInt(convertAmountUsingReverseRatio(toWei('200'), vestingDuration, 1))
             .plus(convertAmountUsingReverseRatio(toWei('100'), vestingDuration, 2))
-            .minus(toWei('1'))
+            .minus(toWei('2'))
             .toString(10);
         const expectedFirstUserTotalVestedBalance   = bigInt(convertAmountUsingReverseRatio(toWei('200'), vestingDuration, 1))
             .plus(convertAmountUsingReverseRatio(toWei('100'), vestingDuration, 2))
             .toString(10);
         const expectedFirstUserUnspentVestedBalance = bigInt(convertAmountUsingReverseRatio(toWei('200'), vestingDuration, 1))
             .plus(convertAmountUsingReverseRatio(toWei('100'), vestingDuration, 2))
-            .minus(toWei('1'))
+            .minus(toWei('2'))
             .toString(10);
-        const expectedFirstUserSpentVestedBalance   = toWei('1');
+        const expectedFirstUserSpentVestedBalance   = toWei('2');
 
         firstUserBalance.should.be.equal(expectedFirstUserBalance);
         firstUserTotalVestedBalance.should.be.equal(expectedFirstUserTotalVestedBalance);
@@ -1065,23 +1134,24 @@ describe('Ethereum XFI Exchange', () => {
     it('check second user\'s balance', async () => {
         const vestingDuration = Number(await xfiToken.VESTING_DURATION.call()) / ONE_DAY;
 
-        const secondUserBalance              = toStr(await xfiToken.balanceOf.call(secondUser.address));
-        const secondUserTotalVestedBalance   = toStr(await xfiToken.totalVestedBalanceOf.call(secondUser.address));
-        const secondUserUnspentVestedBalance = toStr(await xfiToken.unspentVestedBalanceOf.call(secondUser.address));
-        const secondUserSpentVestedBalance   = toStr(await xfiToken.spentVestedBalanceOf.call(secondUser.address));
+        const balance              = toStr(await xfiToken.balanceOf.call(secondUser.address));
+        const totalVestedBalance   = toStr(await xfiToken.totalVestedBalanceOf.call(secondUser.address));
+        const unspentVestedBalance = toStr(await xfiToken.unspentVestedBalanceOf.call(secondUser.address));
+        const spentVestedBalance   = toStr(await xfiToken.spentVestedBalanceOf.call(secondUser.address));
 
-        const expectedSecondUserBalance              = bigInt(convertAmountUsingReverseRatio(toWei('200'), vestingDuration, 2))
+        const expectedVestingBalance       = convertAmountUsingReverseRatio(toWei('200'), vestingDuration, 2);
+        const expectedVestedBalance        = convertAmountUsingRatio(expectedVestingBalance, vestingDuration, 2);
+        const expectedBalance              = bigInt(expectedVestedBalance)
+            .add(toWei('1'))
             .toString(10);
-        const expectedSecondUserTotalVestedBalance   = bigInt(convertAmountUsingReverseRatio(toWei('200'), vestingDuration, 2))
-            .toString(10);
-        const expectedSecondUserUnspentVestedBalance = bigInt(convertAmountUsingReverseRatio(toWei('200'), vestingDuration, 2))
-            .toString(10);
-        const expectedSecondUserSpentVestedBalance   = '0';
+        const expectedTotalVestedBalance   = '0';
+        const expectedUnspentVestedBalance = '0';
+        const expectedSpentVestedBalance   = '0';
 
-        secondUserBalance.should.be.equal(expectedSecondUserBalance);
-        secondUserTotalVestedBalance.should.be.equal(expectedSecondUserTotalVestedBalance);
-        secondUserUnspentVestedBalance.should.be.equal(expectedSecondUserUnspentVestedBalance);
-        secondUserSpentVestedBalance.should.be.equal(expectedSecondUserSpentVestedBalance);
+        balance.should.be.equal(expectedBalance);
+        totalVestedBalance.should.be.equal(expectedTotalVestedBalance);
+        unspentVestedBalance.should.be.equal(expectedUnspentVestedBalance);
+        spentVestedBalance.should.be.equal(expectedSpentVestedBalance);
     });
 
     it('doesn\'t allow to swap WINGS afer vesting end', async () => {
