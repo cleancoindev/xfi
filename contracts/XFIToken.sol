@@ -310,20 +310,28 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
      *
      * Requirements:
      * - `to` is not the zero bytes.
-     * - TBD
+     * - Vesting balance is greater than zero.
      */
     function migrateVestingBalance(bytes32 to) external override nonReentrant returns (bool) {
         require(to != bytes32(0), 'XFIToken: migrate to the zero bytes');
 
-        /*
-            TODO
-            Checks.
-            Make vested balance persistent.
-            Reset remaining vesting balance.
-            Update total supply if needed.
-        */
-
         uint256 vestingBalance = _vestingBalances[msg.sender];
+
+        require(vestingBalance > 0, 'XFIToken: vesting balance is zero');
+
+        uint256 totalVestedBalance = totalVestedBalanceOf(msg.sender);
+        uint256 unspentVestedBalance = unspentVestedBalanceOf(msg.sender);
+
+        // Make unspent vested balance persistent.
+        _balances[msg.sender] = _balances[msg.sender].add(unspentVestedBalance);
+
+        // Subtract remaining vesting balance from total supply.
+        uint256 remainingVestingBalance = vestingBalance.sub(totalVestedBalance);
+        _totalSupply = _totalSupply.sub(remainingVestingBalance);
+
+        // Reset vesting.
+        _vestingBalances[msg.sender] = 0;
+        _spentVestedBalances[msg.sender] = 0;
 
         emit VestingBalanceMigrated(msg.sender, to, vestingDaysLeft(), vestingBalance);
     }
