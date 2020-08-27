@@ -22,9 +22,9 @@ const {convertAmountUsingRatio}        = math;
 const {convertAmountUsingReverseRatio} = math;
 
 describe('Ethereum XFI Exchange', () => {
-    const START_DATE                         = Math.floor((Date.now() / 1000) + 3600).toString();
-    const WINGS_TOTAL_SUPPLY                 = toWei('100000000'); // 1e26
-    const EXCHANGE_WINGS_START               = '0';
+    const START_DATE           = Math.floor((Date.now() / 1000) + 3600).toString();
+    const WINGS_TOTAL_SUPPLY   = toWei('100000000'); // 1e26
+    const EXCHANGE_WINGS_START = '0';
 
     const creator       = web3.eth.accounts.create();
     const newOwner      = web3.eth.accounts.create();
@@ -288,6 +288,23 @@ describe('Ethereum XFI Exchange', () => {
 
         wingsIn.should.be.equal(expectedWingsIn);
         xfiOut.should.be.equal(expectedXfiOut);
+    });
+
+    it('estimate amounts of swap WINGS-XFI per day', async () => {
+        const vestingDurationDays = Number(await xfiToken.VESTING_DURATION_DAYS.call());
+        const vestingDaysLeft     = Number(await xfiToken.vestingDaysLeft.call());
+
+        const amountIn = toWei('100');
+
+        const expectedAmountOutPerDay = bigInt(amountIn)
+            .times(vestingDaysLeft)
+            .divide(vestingDurationDays)
+            .divide(vestingDurationDays)
+            .toString(10);
+
+        const amountPerDay = toStr(await exchange.estimateSwapWINGSForXFIPerDay.call(amountIn));
+
+        amountPerDay.should.be.equal(expectedAmountOutPerDay);
     });
 
     it('doesn\'t allow to swap before the vesting start', async () => {
