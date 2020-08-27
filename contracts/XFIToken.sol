@@ -64,6 +64,8 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
 
     bool private _stopped = false;
 
+    bool private _migratingAllowed = false;
+
     /**
      * Sets {DEFAULT_ADMIN_ROLE} (alias `owner`) role for caller.
      * Assigns vesting and freeze period dates.
@@ -280,6 +282,26 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
     }
 
     /**
+     * Start migrations.
+     *
+     * Emits a {MigrationsStarted} event.
+     *
+     * Requirements:
+     * - Caller must have owner role.
+     * - Migrating isn't allowed.
+     */
+    function allowMigrations() external override returns (bool) {
+        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), 'XFIToken: sender is not owner');
+        require(!_migratingAllowed, 'XFIToken: migrating is allowed');
+
+        _migratingAllowed = true;
+
+        emit MigrationsAllowed();
+
+        return true;
+    }
+
+    /**
      * Withdraws reserve amount to a destination specified as `to`.
      *
      * Emits a {ReserveWithdrawal} event.
@@ -299,6 +321,42 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
         _mint(to, amount);
 
         emit ReserveWithdrawal(to, amount);
+
+        return true;
+    }
+
+    /**
+     * Migrate vesting balance to the Dfinance blockchain.
+     *
+     * Emits a {VestingBalanceMigrated} event.
+     *
+     * Requirements:
+     * - `to` is not the zero bytes.
+     * - Vesting balance is greater than zero.
+     */
+    function migrateVestingBalance(bytes32 to) external override nonReentrant returns (bool) {
+        require(to != bytes32(0), 'XFIToken: migrate to the zero bytes');
+        require(_migratingAllowed, 'XFIToken: migrating is disallowed');
+
+        uint256 vestingBalance = _vestingBalances[msg.sender];
+
+        require(vestingBalance > 0, 'XFIToken: vesting balance is zero');
+
+        uint256 totalVestedBalance = totalVestedBalanceOf(msg.sender);
+        uint256 unspentVestedBalance = unspentVestedBalanceOf(msg.sender);
+
+        // Make unspent vested balance persistent.
+        _balances[msg.sender] = _balances[msg.sender].add(unspentVestedBalance);
+
+        // Subtract remaining vesting balance from total supply.
+        uint256 remainingVestingBalance = vestingBalance.sub(totalVestedBalance);
+        _totalSupply = _totalSupply.sub(remainingVestingBalance);
+
+        // Reset vesting.
+        _vestingBalances[msg.sender] = 0;
+        _spentVestedBalances[msg.sender] = 0;
+
+        emit VestingBalanceMigrated(msg.sender, to, vestingDaysLeft(), vestingBalance);
 
         return true;
     }
@@ -357,6 +415,13 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
      */
     function isTransferringStopped() external view override returns (bool) {
         return _stopped;
+    }
+
+    /**
+     * Returns whether migrating is allowed.
+     */
+    function isMigratingAllowed() external view override returns (bool) {
+        return _migratingAllowed;
     }
 
     /**

@@ -9,6 +9,7 @@ This repository is a home for the XFI Token contract as well as the Ethereum XFI
   - [XFI Token](#xfi-token)
     - [XFI Token Methods](#xfi-token-methods)
       - [isTransferringStopped](#istransferringstopped)
+      - [isMigratingAllowed](#ismigratingallowed)
       - [VESTING_DURATION](#vesting_duration)
       - [VESTING_DURATION_DAYS](#vesting_duration_days)
       - [RESERVE_FREEZE_DURATION](#reserve_freeze_duration)
@@ -58,6 +59,19 @@ Example:
 
 ```solidity
 isTransferringStopped()
+```
+
+#### isMigratingAllowed
+
+Returns whether migrating is allowed.
+
+Output:
+- `bool` - whether migrating is allowed.
+
+Example:
+
+```solidity
+isMigratingAllowed()
 ```
 
 #### VESTING_DURATION
