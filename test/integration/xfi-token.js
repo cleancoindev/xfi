@@ -335,6 +335,18 @@ describe('XFI Token', () => {
         }
     });
 
+    it('doesn\'t allow to mint tokens without vesting before minter role was granted', async () => {
+        try {
+            await token.mintWithoutVesting(minter.address, '1', {from: minter.address});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('XFIToken: sender is not minter');
+        }
+    });
+
     it('add minter', async () => {
         const minterRole = await token.MINTER_ROLE.call();
 
@@ -352,6 +364,18 @@ describe('XFI Token', () => {
     it('doesn\'t allow to mint tokens for zero address', async () => {
         try {
             await token.mint(ZERO_ADDRESS, '1', {from: minter.address});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('XFIToken: mint to the zero address');
+        }
+    });
+
+    it('doesn\'t allow to mint tokens without vesting for zero address', async () => {
+        try {
+            await token.mintWithoutVesting(ZERO_ADDRESS, '1', {from: minter.address});
 
             throw Error('Should revert');
         } catch (error) {

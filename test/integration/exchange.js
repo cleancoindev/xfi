@@ -922,6 +922,43 @@ describe('Ethereum XFI Exchange', () => {
         toStr(firstLog.args.amountOut).should.be.equal(expectedAmountOut);
     });
 
+    it('grant the creator minter role', async () => {
+        const minterRole = await xfiToken.MINTER_ROLE.call();
+
+        await xfiToken.grantRole(minterRole, creator.address, {from: creator.address});
+
+        const roleMemberCount = (await xfiToken.getRoleMemberCount.call(minterRole)).toNumber();
+        const minterIsMinter  = await xfiToken.hasRole.call(minterRole, creator.address);
+        const roleMember      = await xfiToken.getRoleMember.call(minterRole, 1);
+
+        roleMemberCount.should.be.equal(2);
+        minterIsMinter.should.be.true;
+        roleMember.should.be.equal(creator.address);
+    });
+
+    it('mint without vesting', async () => {
+        const expectedXfiTotalSupplyBefore = await calculateXfiTotalSupply(xfiToken, xfiTotalSupply);
+
+        // Update persistent total supply.
+        xfiTotalSupply.persistent = bigInt(xfiTotalSupply.persistent)
+            .plus(toWei('1'))
+            .toString(10);
+
+        const expectedXfiTotalSupplyAfter = await calculateXfiTotalSupply(xfiToken, xfiTotalSupply);
+
+        const xfiTotalSupplyBefore = toStr(await xfiToken.totalSupply.call());
+
+        xfiTotalSupplyBefore.should.be.equal(expectedXfiTotalSupplyBefore);
+
+        const amountToMint = toWei('1');
+
+        await xfiToken.mintWithoutVesting(secondUser.address, amountToMint, {from: creator.address});
+
+        const xfiTotalSupplyAfter = toStr(await xfiToken.totalSupply.call());
+
+        xfiTotalSupplyAfter.should.be.equal(expectedXfiTotalSupplyAfter);
+    });
+
     it('doesn\'t allow to migrate vesting balance to zero address', async () => {
         const ZERO_BYTES = '0x' + '0'.repeat(64);
 
@@ -1015,7 +1052,7 @@ describe('Ethereum XFI Exchange', () => {
         const spentVestedBalance   = toStr(await xfiToken.spentVestedBalanceOf.call(secondUser.address));
 
         const expectedBalance              = bigInt(expectedVestedBalance)
-            .add(toWei('1'))
+            .add(toWei('2'))
             .toString(10);
         const expectedTotalVestedBalance   = '0';
         const expectedUnspentVestedBalance = '0';
@@ -1204,7 +1241,7 @@ describe('Ethereum XFI Exchange', () => {
         const expectedVestingBalance       = convertAmountUsingReverseRatio(toWei('200'), vestingDuration, 2);
         const expectedVestedBalance        = convertAmountUsingRatio(expectedVestingBalance, vestingDuration, 2);
         const expectedBalance              = bigInt(expectedVestedBalance)
-            .add(toWei('1'))
+            .add(toWei('2'))
             .toString(10);
         const expectedTotalVestedBalance   = '0';
         const expectedUnspentVestedBalance = '0';
