@@ -7,7 +7,6 @@ import '@openzeppelin/contracts/access/AccessControl.sol';
 import '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 import './interfaces/IExchange.sol';
 import './interfaces/IXFIToken.sol';
-import './interfaces/IUniswapV2Router.sol';
 
 /**
  * Implementation of the {IExchange} interface.
@@ -19,32 +18,25 @@ import './interfaces/IUniswapV2Router.sol';
  *
  * To enable swap the Exchange plays a role of a storage for WINGS tokens as
  * well as a minter of XFI Tokens.
- *
- * Swaps involving ETH take place using Automated Liquidity Protocol - Uniswap.
- * Uniswap allows to make instant swaps between WINGS-ETH pair that
- * guarantee minimum amount of output tokens that must be received, all within
- * a single transaction.
  */
 contract Exchange is AccessControl, ReentrancyGuard, IExchange {
     using SafeMath for uint256;
 
     IERC20 private immutable _wingsToken;
     IXFIToken private immutable _xfiToken;
-    IUniswapV2Router private immutable _uniswapRouter;
 
     bool private _stopped = false;
     uint256 private _maxGasPrice;
 
     /**
      * Sets {DEFAULT_ADMIN_ROLE} (alias `owner`) role for caller.
-     * Initializes Wings Token, XFI Token and Uniswap Router.
+     * Initializes Wings Token, XFI Token.
      */
-    constructor (address wingsToken_, address xfiToken_, address uniswapRouter_) public {
+    constructor (address wingsToken_, address xfiToken_) public {
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
 
         _wingsToken = IERC20(wingsToken_);
         _xfiToken = IXFIToken(xfiToken_);
-        _uniswapRouter = IUniswapV2Router(uniswapRouter_);
     }
 
     /**
@@ -72,32 +64,6 @@ contract Exchange is AccessControl, ReentrancyGuard, IExchange {
         require(_xfiToken.mint(msg.sender, amounts[amounts.length - 1]), 'Exchange: XFI mint failed');
 
         emit SwapWINGSForXFI(msg.sender, amounts[0], amounts[amounts.length - 1]);
-    }
-
-    /**
-     * Executes swap of ETH-XFI pair.
-     *
-     * Emits a {SwapETHForXFI} event.
-     *
-     * Returns:
-     * - `amounts` the input token amount and all subsequent output token amounts.
-     */
-    function swapETHForXFI(uint256 amountOutMin) external payable override nonReentrant returns (uint256[] memory amounts) {
-        _beforeSwap();
-
-        address[] memory path = new address[](2);
-        path[0] = _uniswapRouter.WETH();
-        path[1] = address(_wingsToken);
-
-        amounts = _uniswapRouter.swapExactETHForTokens{value: msg.value}(amountOutMin, path, address(this), block.timestamp);
-
-        uint256 amountOut = _calculateSwapAmount(amounts[amounts.length - 1]);
-
-        amounts[amounts.length - 1] = amountOut;
-
-        require(_xfiToken.mint(msg.sender, amounts[amounts.length - 1]), 'Exchange: XFI mint failed');
-
-        emit SwapETHForXFI(msg.sender, amounts[0], amounts[amounts.length - 1]);
     }
 
     /**
@@ -195,13 +161,6 @@ contract Exchange is AccessControl, ReentrancyGuard, IExchange {
     }
 
     /**
-     * Returns the address of the Uniswap Router.
-     */
-    function uniswapRouter() external view override returns (address) {
-        return address(_uniswapRouter);
-    }
-
-    /**
      * Returns `amount` XFI estimation that user will receive per day after the swap of WINGS-XFI pair.
      */
     function estimateSwapWINGSForXFIPerDay(uint256 amountIn) external view override returns (uint256 amount) {
@@ -210,14 +169,6 @@ contract Exchange is AccessControl, ReentrancyGuard, IExchange {
         amount = amounts[1].div(_xfiToken.VESTING_DURATION_DAYS());
     }
 
-    /**
-     * Returns `amount` XFI estimation that user will receive per day after the swap of ETH-XFI pair.
-     */
-    function estimateSwapETHForXFIPerDay(uint256 amountIn) external view override returns (uint256 amount) {
-        uint256[] memory amounts = estimateSwapETHForXFI(amountIn);
-
-        amount = amounts[1].div(_xfiToken.VESTING_DURATION_DAYS());
-    }
 
     /**
      * Returns whether swapping is stopped.
@@ -242,21 +193,6 @@ contract Exchange is AccessControl, ReentrancyGuard, IExchange {
         amounts[0] = amountIn;
 
         uint256 amountOut = _calculateSwapAmount(amounts[0]);
-
-        amounts[1] = amountOut;
-    }
-
-    /**
-     * Returns `amounts` estimation for swap of ETH-XFI pair.
-     */
-    function estimateSwapETHForXFI(uint256 amountIn) public view override returns (uint256[] memory amounts) {
-        address[] memory path = new address[](2);
-        path[0] = _uniswapRouter.WETH();
-        path[1] = address(_wingsToken);
-
-        amounts = _uniswapRouter.getAmountsOut(amountIn, path);
-
-        uint256 amountOut = _calculateSwapAmount(amounts[1]);
 
         amounts[1] = amountOut;
     }
