@@ -364,21 +364,22 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
 
         require(vestingBalance > 0, 'XFIToken: vesting balance is zero');
 
-        uint256 totalVestedBalance = totalVestedBalanceOf(msg.sender);
         uint256 spentVestedBalance = spentVestedBalanceOf(msg.sender);
         uint256 unspentVestedBalance = unspentVestedBalanceOf(msg.sender);
+
+        // Subtract the vesting balance from total supply.
+        _vestingTotalSupply = _vestingTotalSupply.sub(vestingBalance);
+
+        // Add the unspent vesting balance to total supply.
+        _totalSupply = _totalSupply.add(unspentVestedBalance);
+
+        // Subtract the spent vested balance from total supply.
+        _spentVestedTotalSupply = _spentVestedTotalSupply.sub(spentVestedBalance);
 
         // Make unspent vested balance persistent.
         _balances[msg.sender] = _balances[msg.sender].add(unspentVestedBalance);
 
-        // Subtract remaining vesting balance from total supply.
-        uint256 remainingVestingBalance = vestingBalance.sub(totalVestedBalance);
-        _vestingTotalSupply = _vestingTotalSupply.sub(remainingVestingBalance);
-
-        // Subtract spent vested balance from total supply.
-        _spentVestedTotalSupply = _spentVestedTotalSupply.sub(spentVestedBalance);
-
-        // Reset vesting.
+        // Reset the account's vesting.
         _vestingBalances[msg.sender] = 0;
         _spentVestedBalances[msg.sender] = 0;
 
