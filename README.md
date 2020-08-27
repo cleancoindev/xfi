@@ -14,7 +14,7 @@ This repository is a home for the XFI Token contract as well as the Ethereum XFI
       - [VESTING_DURATION_DAYS](#vesting_duration_days)
       - [RESERVE_FREEZE_DURATION](#reserve_freeze_duration)
       - [RESERVE_FREEZE_DURATION_DAYS](#reserve_freeze_duration_days)
-      - [MAX_TOTAL_SUPPLY](#max_total_supply)
+      - [MAX_VESTING_TOTAL_SUPPLY](#max_vesting_total_supply)
       - [vestingStart](#vestingstart)
       - [vestingEnd](#vestingend)
       - [vestingDaysSinceStart](#vestingdayssincestart)
@@ -123,9 +123,9 @@ Example:
 RESERVE_FREEZE_DURATION_DAYS()
 ```
 
-#### MAX_TOTAL_SUPPLY
+#### MAX_VESTING_TOTAL_SUPPLY
 
-Returns maximum total XFI supply.
+Returns maximum vesting total supply.
 
 Output:
 - `uint256` - maximum total supply.
@@ -133,7 +133,7 @@ Output:
 Example:
 
 ```solidity
-MAX_TOTAL_SUPPLY()
+MAX_VESTING_TOTAL_SUPPLY()
 ```
 
 #### vestingStart

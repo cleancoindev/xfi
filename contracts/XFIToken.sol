@@ -34,7 +34,7 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
 
     bytes32 public constant MINTER_ROLE = keccak256('minter');
 
-    uint256 public constant override MAX_TOTAL_SUPPLY = 1e26; // 100 million XFI.
+    uint256 public constant override MAX_VESTING_TOTAL_SUPPLY = 1e26; // 100 million XFI.
 
     uint256 public constant override VESTING_DURATION_DAYS = 182;
     uint256 public constant override VESTING_DURATION = 182 days;
@@ -54,7 +54,11 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
 
     mapping (address => mapping (address => uint256)) private _allowances;
 
+    uint256 private _vestingTotalSupply;
+
     uint256 private _totalSupply;
+
+    uint256 private _spentVestedTotalSupply;
 
     uint256 private _vestingStart;
 
@@ -184,6 +188,24 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
         require(hasRole(MINTER_ROLE, msg.sender), 'XFIToken: sender is not minter');
 
         _mint(account, amount);
+
+        return true;
+    }
+
+    /**
+     * Creates `amount` tokens and assigns them to `account`, increasing
+     * the total supply without vesting.
+     *
+     * Emits a {Transfer} event with `from` set to the zero address.
+     *
+     * Requirements:
+     * - Caller must have minter role.
+     * - `account` cannot be the zero address.
+     */
+    function mintWithoutVesting(address account, uint256 amount) external override returns (bool) {
+        require(hasRole(MINTER_ROLE, msg.sender), 'XFIToken: sender is not minter');
+
+        _mintWithoutVesting(account, amount);
 
         return true;
     }
@@ -343,6 +365,7 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
         require(vestingBalance > 0, 'XFIToken: vesting balance is zero');
 
         uint256 totalVestedBalance = totalVestedBalanceOf(msg.sender);
+        uint256 spentVestedBalance = spentVestedBalanceOf(msg.sender);
         uint256 unspentVestedBalance = unspentVestedBalanceOf(msg.sender);
 
         // Make unspent vested balance persistent.
@@ -350,7 +373,10 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
 
         // Subtract remaining vesting balance from total supply.
         uint256 remainingVestingBalance = vestingBalance.sub(totalVestedBalance);
-        _totalSupply = _totalSupply.sub(remainingVestingBalance);
+        _vestingTotalSupply = _vestingTotalSupply.sub(remainingVestingBalance);
+
+        // Subtract spent vested balance from total supply.
+        _spentVestedTotalSupply = _spentVestedTotalSupply.sub(spentVestedBalance);
 
         // Reset vesting.
         _vestingBalances[msg.sender] = 0;
@@ -482,7 +508,9 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
      * Returns total supply of the token.
      */
     function totalSupply() public view override returns (uint256) {
-        return convertAmountUsingRatio(_totalSupply);
+        return convertAmountUsingRatio(_vestingTotalSupply)
+            .add(_totalSupply)
+            .sub(_spentVestedTotalSupply);
     }
 
     /**
@@ -519,8 +547,8 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
      * Returns reserve amount.
      */
     function reserveAmount() public view override returns (uint256) {
-        return MAX_TOTAL_SUPPLY
-            .sub(totalSupply());
+        return MAX_VESTING_TOTAL_SUPPLY
+            .sub(convertAmountUsingRatio(_vestingTotalSupply));
     }
 
     /**
@@ -555,17 +583,35 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
      * Requirements:
      * - `account` cannot be the zero address.
      * - Transferring is not stopped.
-     * - Total supply doesn't exceed `MAX_TOTAL_SUPPLY`.
      */
     function _mint(address account, uint256 amount) internal {
         require(account != address(0), 'XFIToken: mint to the zero address');
         require(!_stopped, 'XFIToken: transferring is stopped');
 
-        _totalSupply = _totalSupply.add(amount);
-
-        require(_totalSupply <= MAX_TOTAL_SUPPLY, 'XFIToken: mint will result in exceeding total supply');
+        _vestingTotalSupply = _vestingTotalSupply.add(amount);
 
         _vestingBalances[account] = _vestingBalances[account].add(amount);
+
+        emit Transfer(address(0), account, amount);
+    }
+
+    /**
+     * Creates `amount` tokens and assigns them to `account`, increasing
+     * the total supply without vesting.
+     *
+     * Emits a {Transfer} event with `from` set to the zero address.
+     *
+     * Requirements:
+     * - `account` cannot be the zero address.
+     * - Transferring is not stopped.
+     */
+    function _mintWithoutVesting(address account, uint256 amount) internal {
+        require(account != address(0), 'XFIToken: mint to the zero address');
+        require(!_stopped, 'XFIToken: transferring is stopped');
+
+        _totalSupply = _totalSupply.add(amount);
+
+        _balances[account] = _balances[account].add(amount);
 
         emit Transfer(address(0), account, amount);
     }
@@ -635,5 +681,8 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
 
         _balances[account] = _balances[account].sub(usedBalance);
         _spentVestedBalances[account] = _spentVestedBalances[account].add(usedVestedBalance);
+
+        _totalSupply = _totalSupply.add(usedVestedBalance);
+        _spentVestedTotalSupply = _spentVestedTotalSupply.add(usedVestedBalance);
     }
 }
