@@ -17,10 +17,10 @@ This repository is a home for the XFI Token contract as well as the Ethereum XFI
       - [MAX_TOTAL_SUPPLY](#max_total_supply)
       - [vestingStart](#vestingstart)
       - [vestingEnd](#vestingend)
-      - [reserveFrozenUntil](#reservefrozenuntil)
-      - [reserveAmount](#reserveamount)
       - [vestingDaysSinceStart](#vestingdayssincestart)
       - [vestingDaysLeft](#vestingdaysleft)
+      - [reserveFrozenUntil](#reservefrozenuntil)
+      - [reserveAmount](#reserveamount)
       - [convertAmountUsingRatio](#convertamountusingratio)
       - [convertAmountUsingReverseRatio](#convertamountusingreverseratio)
       - [totalVestedBalanceOf](#totalvestedbalanceof)
@@ -29,13 +29,10 @@ This repository is a home for the XFI Token contract as well as the Ethereum XFI
   - [Exchange](#exchange)
     - [Exchange Methods](#exchange-methods)
       - [estimateSwapWINGSForXFI](#estimateswapwingsforxfi)
-      - [estimateSwapETHForXFI](#estimateswapethforxfi)
       - [estimateSwapWINGSForXFIPerDay](#estimateswapwingsforxfiperday)
-      - [estimateSwapETHForXFIPerDay](#estimateswapethforxfiperday)
       - [isSwappingStopped](#isswappingstopped)
       - [maxGasPrice](#maxgasprice)
       - [swapWINGSForXFI](#swapwingsforxfi)
-      - [swapETHForXFI](#swapethforxfi)
   - [Requirements](#requirements)
   - [Compiling](#compiling)
   - [Deploying](#deploying)
@@ -317,22 +314,6 @@ Example:
 estimateSwapWINGSForXFI(amountIn)
 ```
 
-#### estimateSwapETHForXFI
-
-Returns estimation for swap of ETH-XFI pair.
-
-Input:
-- `uint256 amountIn` - amount of ETH to swap.
-
-Output:
-- `uint256[] amounts` - estimation for swap of ETH-XFI pair.
-
-Example:
-
-```solidity
-estimateSwapETHForXFI(amountIn)
-```
-
 #### estimateSwapWINGSForXFIPerDay
 
 Returns daily vesting estimation for swap of WINGS-XFI pair.
@@ -347,22 +328,6 @@ Example:
 
 ```solidity
 estimateSwapWINGSForXFIPerDay(amountIn)
-```
-
-#### estimateSwapETHForXFIPerDay
-
-Returns daily vesting estimation for swap of ETH-XFI pair.
-
-Input:
-- `uint256 amountIn` - amount of ETH to swap.
-
-Output:
-- `uint256[] amounts` - estimated amount of XFI that will be vested each day of the vesting period.
-
-Example:
-
-```solidity
-estimateSwapETHForXFIPerDay(amountIn)
 ```
 
 #### isSwappingStopped
@@ -403,24 +368,6 @@ Example:
 
 ```solidity
 swapWINGSForXFI(amountIn)
-```
-
-#### swapETHForXFI
-
-Executes swap of ETH-XFI pair.
-
-Emits a `SwapETHForXFI` event.
-
-Input:
-- `uint256 amountOutMin` - minimum amount of XFI to receive.
-
-Output:
-- `uint256[] amounts` - result of a swap of ETH-XFI pair.
-
-Example:
-
-```solidity
-swapETHForXFI(amountOutMin)
 ```
 
 ## Requirements
