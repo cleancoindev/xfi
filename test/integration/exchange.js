@@ -71,7 +71,12 @@ describe('Ethereum XFI Exchange', () => {
     let xfiToken;
     let uniswapRouter;
     let exchange;
-    let absoluteXfiTotalSupply = '0';
+
+    const xfiTotalSupply = {
+        persistent:  '0',
+        vesting:     '0',
+        spentVested: '0'
+    };
 
     before('launch the Test RPC', async () => {
         await testRpc.start(TEST_RPC_PORT);
@@ -116,11 +121,11 @@ describe('Ethereum XFI Exchange', () => {
     });
 
     it('total supply of XFI is valid', async () => {
-        const expectedXfiTotalSupply = await calculateXfiTotalSupply(xfiToken, absoluteXfiTotalSupply);
+        const expectedXfiTotalSupply = await calculateXfiTotalSupply(xfiToken, xfiTotalSupply);
 
-        const xfiTotalSupply = toStr(await xfiToken.totalSupply.call());
+        const xfiTotalSupply_ = toStr(await xfiToken.totalSupply.call());
 
-        xfiTotalSupply.should.be.equal(expectedXfiTotalSupply);
+        xfiTotalSupply_.should.be.equal(expectedXfiTotalSupply);
     });
 
     it('the Exchange has correct addresses of tokens and Uniswap Router', async () => {
@@ -489,16 +494,16 @@ describe('Ethereum XFI Exchange', () => {
         const amountIn = toWei('100');
 
         // Expected values before the swap.
-        const expectedXfiTotalSupplyBefore       = await calculateXfiTotalSupply(xfiToken, absoluteXfiTotalSupply);
+        const expectedXfiTotalSupplyBefore       = await calculateXfiTotalSupply(xfiToken, xfiTotalSupply);
         const expectedUserWingsBalanceBefore     = toWei('200');
         const expectedUserXfiBalanceBefore       = '0';
         const expectedExchangeWingsBalanceBefore = EXCHANGE_WINGS_START;
 
-        // Update the absolute XFI total supply.
-        absoluteXfiTotalSupply = await increaseXfiTotalSupply(xfiToken, absoluteXfiTotalSupply, amountIn);
+        // Update the vesting XFI total supply.
+        xfiTotalSupply.vesting = await increaseXfiTotalSupply(xfiToken, xfiTotalSupply.vesting, amountIn);
 
         // Expected values after the swap.
-        const expectedXfiTotalSupplyAfter        = await calculateXfiTotalSupply(xfiToken, absoluteXfiTotalSupply);
+        const expectedXfiTotalSupplyAfter        = await calculateXfiTotalSupply(xfiToken, xfiTotalSupply);
         const expectedUserWingsBalanceAfter      = toWei('100');
         const expectedUserXfiBalanceAfter        = convertAmountUsingRatio(amountIn, vestingDurationDays, vestingDaysSinceStart);
         const expectedExchangeWingsBalanceAfter  = toWei('100');
@@ -580,16 +585,16 @@ describe('Ethereum XFI Exchange', () => {
             .toString(10);
 
         // Expected values before the swap.
-        const expectedXfiTotalSupplyBefore       = await calculateXfiTotalSupply(xfiToken, absoluteXfiTotalSupply);
+        const expectedXfiTotalSupplyBefore       = await calculateXfiTotalSupply(xfiToken, xfiTotalSupply);
         const expectedUserWingsBalanceBefore     = toWei('100');
         const expectedUserXfiBalanceBefore       = convertAmountUsingRatio(toWei('100'), vestingDurationDays, vestingDaysSinceStart);
         const expectedExchangeWingsBalanceBefore = toWei('100');
 
-        // Update the absolute XFI total supply.
-        absoluteXfiTotalSupply = await increaseXfiTotalSupply(xfiToken, absoluteXfiTotalSupply, amountOutMin);
+        // Update the vesting XFI total supply.
+        xfiTotalSupply.vesting = await increaseXfiTotalSupply(xfiToken, xfiTotalSupply.vesting, amountOutMin);
 
         // Expected values after the swap.
-        const expectedXfiTotalSupplyAfter        = await calculateXfiTotalSupply(xfiToken, absoluteXfiTotalSupply);
+        const expectedXfiTotalSupplyAfter        = await calculateXfiTotalSupply(xfiToken, xfiTotalSupply);
         const expectedUserWingsBalanceAfter      = toWei('100');
         const expectedUserXfiBalanceAfter        = convertAmountUsingRatio(toStr(bigInt(toWei('100')).plus(amountOutMin)), vestingDurationDays, vestingDaysSinceStart);
         const expectedExchangeWingsBalanceAfter  = toWei('200');
@@ -696,16 +701,16 @@ describe('Ethereum XFI Exchange', () => {
         const expectedAmountOut = convertAmountUsingReverseRatio(amountIn, vestingDurationDays, vestingDaysSinceStart);
 
         // Expected values before the swap.
-        const expectedXfiTotalSupplyBefore       = await calculateXfiTotalSupply(xfiToken, absoluteXfiTotalSupply);
+        const expectedXfiTotalSupplyBefore       = await calculateXfiTotalSupply(xfiToken, xfiTotalSupply);
         const expectedUserWingsBalanceBefore     = toWei('100');
         const expectedUserXfiBalanceBefore       = convertAmountUsingRatio(toWei('200'), vestingDurationDays, vestingDaysSinceStart);
         const expectedExchangeWingsBalanceBefore = toWei('200');
 
-        // Update the absolute XFI total supply.
-        absoluteXfiTotalSupply = await increaseXfiTotalSupply(xfiToken, absoluteXfiTotalSupply, amountIn);
+        // Update the vesting XFI total supply.
+        xfiTotalSupply.vesting = await increaseXfiTotalSupply(xfiToken, xfiTotalSupply.vesting, amountIn);
 
         // Expected values after the swap.
-        const expectedXfiTotalSupplyAfter        = await calculateXfiTotalSupply(xfiToken, absoluteXfiTotalSupply);
+        const expectedXfiTotalSupplyAfter        = await calculateXfiTotalSupply(xfiToken, xfiTotalSupply);
         const expectedUserWingsBalanceAfter      = '0';
         const expectedUserXfiBalanceAfter        = bigInt(expectedUserXfiBalanceBefore)
             .plus(convertAmountUsingRatio(expectedAmountOut, vestingDurationDays, vestingDaysSinceStart))
@@ -775,6 +780,13 @@ describe('Ethereum XFI Exchange', () => {
 
         const amount = toWei('2');
 
+        xfiTotalSupply.persistent  = bigInt(xfiTotalSupply.persistent)
+            .plus(amount)
+            .toString(10);
+        xfiTotalSupply.spentVested = bigInt(xfiTotalSupply.spentVested)
+            .plus(amount)
+            .toString(10);
+
         const expectedFirstUserBalance              = bigInt(firstUserBalanceBefore)
             .minus(amount)
             .toString(10);
@@ -825,9 +837,9 @@ describe('Ethereum XFI Exchange', () => {
 
         await xfiToken.burn(amountToBurn, {from: secondUser.address});
 
-        // Update absolute XFI total supply.
-        absoluteXfiTotalSupply = bigInt(absoluteXfiTotalSupply)
-            .minus(amountToBurn)
+        // Update XFI total supply.
+        xfiTotalSupply.spentVested = bigInt(xfiTotalSupply.spentVested)
+            .plus(amountToBurn)
             .toString(10);
     });
 
@@ -844,16 +856,16 @@ describe('Ethereum XFI Exchange', () => {
         const expectedAmountOut = convertAmountUsingReverseRatio(amountIn, vestingDuration, vestingDaysSinceStart);
 
         // Expected values before the swap.
-        const expectedXfiTotalSupplyBefore       = await calculateXfiTotalSupply(xfiToken, absoluteXfiTotalSupply);
+        const expectedXfiTotalSupplyBefore       = await calculateXfiTotalSupply(xfiToken, xfiTotalSupply);
         const expectedUserWingsBalanceBefore     = toWei('200');
         const expectedUserXfiBalanceBefore       = toWei('1');
         const expectedExchangeWingsBalanceBefore = toWei('300');
 
-        // Update the absolute XFI total supply.
-        absoluteXfiTotalSupply = await increaseXfiTotalSupply(xfiToken, absoluteXfiTotalSupply, amountIn);
+        // Update the vesting XFI total supply.
+        xfiTotalSupply.vesting = await increaseXfiTotalSupply(xfiToken, xfiTotalSupply.vesting, amountIn);
 
         // Expected values after the swap.
-        const expectedXfiTotalSupplyAfter        = await calculateXfiTotalSupply(xfiToken, absoluteXfiTotalSupply);
+        const expectedXfiTotalSupplyAfter        = await calculateXfiTotalSupply(xfiToken, xfiTotalSupply);
         const expectedUserWingsBalanceAfter      = '0';
         const expectedUserXfiBalanceAfter        = bigInt(expectedUserXfiBalanceBefore)
             .plus(convertAmountUsingRatio(expectedAmountOut, vestingDuration, vestingDaysSinceStart))
@@ -984,7 +996,7 @@ describe('Ethereum XFI Exchange', () => {
         const expectedVestingBalance = convertAmountUsingReverseRatio(toWei('200'), vestingDuration, 2);
         const expectedVestedBalance  = convertAmountUsingRatio(expectedVestingBalance, vestingDuration, 2);
 
-        absoluteXfiTotalSupply = bigInt(absoluteXfiTotalSupply)
+        xfiTotalSupply.vesting = bigInt(xfiTotalSupply.vesting)
             .plus(expectedVestedBalance)
             .minus(expectedVestingBalance)
             .toString(10);
@@ -1305,11 +1317,11 @@ describe('Ethereum XFI Exchange', () => {
     });
 
     it('total supply of XFI is valid', async () => {
-        const expectedXfiTotalSupply = await calculateXfiTotalSupply(xfiToken, absoluteXfiTotalSupply);
+        const expectedXfiTotalSupply = await calculateXfiTotalSupply(xfiToken, xfiTotalSupply);
 
-        const xfiTotalSupply = toStr(await xfiToken.totalSupply.call());
+        const xfiTotalSupply_ = toStr(await xfiToken.totalSupply.call());
 
-        xfiTotalSupply.should.be.equal(expectedXfiTotalSupply);
+        xfiTotalSupply_.should.be.equal(expectedXfiTotalSupply);
 
         /**
          * NOTE
@@ -1335,29 +1347,32 @@ describe('Ethereum XFI Exchange', () => {
 /**
  * Calculate XFI total supply on a particular day.
  *
- * @param  {Object} token                  XFI token instance.
- * @param  {String} absoluteXfiTotalSupply Absolute XFI total supply.
- * @return {String}                        Expected XFI total supply.
+ * @param  {Object} token          XFI token instance.
+ * @param  {Object} xfiTotalSupply XFI total supply object.
+ * @return {String}                Expected XFI total supply.
  */
-async function calculateXfiTotalSupply(token, absoluteXfiTotalSupply) {
+async function calculateXfiTotalSupply(token, xfiTotalSupply) {
     const vestingDurationDays   = Number(await token.VESTING_DURATION_DAYS.call());
     const vestingDaysSinceStart = Number(await token.vestingDaysSinceStart.call());
 
-    return convertAmountUsingRatio(absoluteXfiTotalSupply, vestingDurationDays, vestingDaysSinceStart);
+    return bigInt(convertAmountUsingRatio(xfiTotalSupply.vesting, vestingDurationDays, vestingDaysSinceStart))
+        .plus(xfiTotalSupply.persistent)
+        .minus(xfiTotalSupply.spentVested)
+        .toString(10);
 }
 
 /**
  * Increase absolute XFI total supply.
  *
- * @param  {String} absoluteXfiTotalSupply Absolute XFI total supply.
+ * @param  {String} vestingXfiTotalSupply Absolute XFI total supply.
  * @param  {String} amount                 Original amount before conversion.
  * @return {String}                        New absolute XFI total supply.
  */
-async function increaseXfiTotalSupply(token, absoluteXfiTotalSupply, amount) {
+async function increaseXfiTotalSupply(token, vestingXfiTotalSupply, amount) {
     const vestingDurationDays   = Number(await token.VESTING_DURATION_DAYS.call());
     const vestingDaysSinceStart = Number(await token.vestingDaysSinceStart.call());
 
-    return bigInt(absoluteXfiTotalSupply)
+    return bigInt(vestingXfiTotalSupply)
         .plus(convertAmountUsingReverseRatio(amount, vestingDurationDays, vestingDaysSinceStart))
         .toString(10);
 }

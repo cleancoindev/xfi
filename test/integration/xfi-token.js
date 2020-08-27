@@ -167,12 +167,12 @@ describe('XFI Token', () => {
         symbol.should.be.equal('XFI');
     });
 
-    it('correct maximum total supply', async () => {
-        const expectedMaxTotalSupply = toWei('100000000');
+    it('correct maximum vesting total supply', async () => {
+        const expectedMaxVestingTotalSupply = toWei('100000000');
 
-        const maxTotalSupply = toStr(await token.MAX_TOTAL_SUPPLY.call());
+        const maxVestingTotalSupply = toStr(await token.MAX_VESTING_TOTAL_SUPPLY.call());
 
-        maxTotalSupply.should.be.equal(expectedMaxTotalSupply);
+        maxVestingTotalSupply.should.be.equal(expectedMaxVestingTotalSupply);
     });
 
     it('correct vesting duration', async () => {
