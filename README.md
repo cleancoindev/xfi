@@ -397,7 +397,6 @@ cp .env.example .env
 **Required environment variables:**
 - `CREATOR_ADDRESS` - address of the creator account.
 - `WINGS_TOKEN_ADDRESS` - address of the WINGS Token.
-- `UNISWAP_V2_ROUTER_ADDRESS` - address of the Uniswap V2 Router.
 - `START_DATE` - vesting start date (only XFI Token deploy).
 - `XFI_TOKEN_ADDRESS` - XFI token address (only Exchange deploy).
 
