@@ -70,6 +70,8 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
 
     bool private _migratingAllowed = false;
 
+    uint256 private _totalMigratedVestingAmount;
+
     /**
      * Sets {DEFAULT_ADMIN_ROLE} (alias `owner`) role for caller.
      * Assigns vesting and freeze period dates.
@@ -364,6 +366,7 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
 
         require(vestingBalance > 0, 'XFIToken: vesting balance is zero');
 
+        uint256 totalVestedBalance = totalVestedBalanceOf(msg.sender);
         uint256 spentVestedBalance = spentVestedBalanceOf(msg.sender);
         uint256 unspentVestedBalance = unspentVestedBalanceOf(msg.sender);
 
@@ -382,6 +385,10 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
         // Reset the account's vesting.
         _vestingBalances[msg.sender] = 0;
         _spentVestedBalances[msg.sender] = 0;
+
+        // Add the remaining vesting amount to total migrated vesting amount.
+        uint256 remainingVestingBalance = vestingBalance.sub(totalVestedBalance);
+        _totalMigratedVestingAmount = _totalMigratedVestingAmount.add(remainingVestingBalance);
 
         emit VestingBalanceMigrated(msg.sender, to, vestingDaysLeft(), vestingBalance);
 
@@ -549,7 +556,10 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
      */
     function reserveAmount() public view override returns (uint256) {
         return MAX_VESTING_TOTAL_SUPPLY
-            .sub(convertAmountUsingRatio(_vestingTotalSupply));
+            .add(_spentVestedTotalSupply)
+            .sub(convertAmountUsingRatio(_vestingTotalSupply))
+            .sub(_totalSupply)
+            .sub(_totalMigratedVestingAmount);
     }
 
     /**

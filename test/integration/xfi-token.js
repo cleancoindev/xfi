@@ -803,6 +803,8 @@ describe('XFI Token', () => {
     });
 
     it('minter burns user tokens', async () => {
+        /* TODO Check total supply. */
+
         const amountToBurn = toWei('10');
 
         const txResult = await token.burnFrom(secondUser.address, amountToBurn, {from: minter.address});
@@ -907,13 +909,20 @@ describe('XFI Token', () => {
     it('withdraw reserve', async () => {
         const reserveAmountBefore = toStr(await token.reserveAmount.call());
 
-        const txResult = await token.withdrawReserve(creator.address, {from: creator.address});
+        const totalSupply = toStr(await token.totalSupply.call());
 
+        /* BUG in total supply and/or reserve. */
+
+        console.log('Total supply:', totalSupply);
+        console.log('Reserve amount before:', reserveAmountBefore);
+
+        const txResult = await token.withdrawReserve(creator.address, {from: creator.address});
         const reserveAmountAfter = toStr(await token.reserveAmount.call());
 
         reserveAmountAfter.should.be.equal('0');
 
         const creatorBalance = toStr(await token.balanceOf.call(creator.address));
+        console.log('Creator balance:', creatorBalance);
 
         creatorBalance.should.be.equal(reserveAmountBefore);
 
