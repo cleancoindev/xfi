@@ -70,7 +70,7 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
 
     bool private _migratingAllowed = false;
 
-    uint256 private _totalMigratedVestingAmount;
+    uint256 private _reserveAmount;
 
     /**
      * Sets {DEFAULT_ADMIN_ROLE} (alias `owner`) role for caller.
@@ -83,6 +83,7 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
         _vestingStart = vestingStart_;
         _vestingEnd = vestingStart_.add(VESTING_DURATION);
         _reserveFrozenUntil = vestingStart_.add(RESERVE_FREEZE_DURATION);
+        _reserveAmount = MAX_VESTING_TOTAL_SUPPLY;
     }
 
     /**
@@ -342,7 +343,9 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
 
         uint256 amount = reserveAmount();
 
-        _mint(to, amount);
+        _mintWithoutVesting(to, amount);
+
+        _reserveAmount = 0;
 
         emit ReserveWithdrawal(to, amount);
 
@@ -366,7 +369,6 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
 
         require(vestingBalance > 0, 'XFIToken: vesting balance is zero');
 
-        uint256 totalVestedBalance = totalVestedBalanceOf(msg.sender);
         uint256 spentVestedBalance = spentVestedBalanceOf(msg.sender);
         uint256 unspentVestedBalance = unspentVestedBalanceOf(msg.sender);
 
@@ -385,10 +387,6 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
         // Reset the account's vesting.
         _vestingBalances[msg.sender] = 0;
         _spentVestedBalances[msg.sender] = 0;
-
-        // Add the remaining vesting amount to total migrated vesting amount.
-        uint256 remainingVestingBalance = vestingBalance.sub(totalVestedBalance);
-        _totalMigratedVestingAmount = _totalMigratedVestingAmount.add(remainingVestingBalance);
 
         emit VestingBalanceMigrated(msg.sender, to, vestingDaysLeft(), vestingBalance);
 
@@ -555,11 +553,7 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
      * Returns reserve amount.
      */
     function reserveAmount() public view override returns (uint256) {
-        return MAX_VESTING_TOTAL_SUPPLY
-            .add(_spentVestedTotalSupply)
-            .sub(convertAmountUsingRatio(_vestingTotalSupply))
-            .sub(_totalSupply)
-            .sub(_totalMigratedVestingAmount);
+        return _reserveAmount;
     }
 
     /**
@@ -602,6 +596,8 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
         _vestingTotalSupply = _vestingTotalSupply.add(amount);
 
         _vestingBalances[account] = _vestingBalances[account].add(amount);
+
+        _reserveAmount = _reserveAmount.sub(amount);
 
         emit Transfer(address(0), account, amount);
     }

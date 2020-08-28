@@ -63,15 +63,16 @@ describe('Ethereum XFI Exchange', () => {
         locked: false
     });
 
-    let wingsToken;
-    let xfiToken;
-    let exchange;
-
     const xfiTotalSupply = {
         persistent:  '0',
         vesting:     '0',
         spentVested: '0'
     };
+
+    let wingsToken;
+    let xfiToken;
+    let exchange;
+    let xfiReserveAmount;
 
     before('launch the Test RPC', async () => {
         await testRpc.start(TEST_RPC_PORT);
@@ -114,6 +115,16 @@ describe('Ethereum XFI Exchange', () => {
         const xfiTotalSupply_ = toStr(await xfiToken.totalSupply.call());
 
         xfiTotalSupply_.should.be.equal(expectedXfiTotalSupply);
+    });
+
+    it('reserve amount of XFI is correct', async () => {
+        const expectedMaxXfiVestingTotalSupply = toWei('100000000'); // 1e26
+
+        const maxXfiVestingTotalSupply = toStr(await xfiToken.MAX_VESTING_TOTAL_SUPPLY.call());
+
+        maxXfiVestingTotalSupply.should.be.equal(expectedMaxXfiVestingTotalSupply);
+
+        xfiReserveAmount = maxXfiVestingTotalSupply;
     });
 
     it('the Exchange has correct addresses of tokens', async () => {
@@ -430,6 +441,11 @@ describe('Ethereum XFI Exchange', () => {
         // Update the vesting XFI total supply.
         xfiTotalSupply.vesting = await increaseXfiTotalSupply(xfiToken, xfiTotalSupply.vesting, amountIn);
 
+        // Update the XFI reserve amount.
+        xfiReserveAmount = bigInt(xfiReserveAmount)
+            .minus(amountIn)
+            .toString(10);
+
         // Expected values after the swap.
         const expectedXfiTotalSupplyAfter        = await calculateXfiTotalSupply(xfiToken, xfiTotalSupply);
         const expectedUserWingsBalanceAfter      = toWei('100');
@@ -473,6 +489,12 @@ describe('Ethereum XFI Exchange', () => {
         userWingsBalanceAfter.should.be.equal(expectedUserWingsBalanceAfter);
         userXfiBalanceAfter.should.be.equal(expectedUserXfiBalanceAfter);
         exchangeWingsBalanceAfter.should.be.equal(expectedExchangeWingsBalanceAfter);
+
+        // Check the XFI reserve amount.
+
+        const xfiReserveAmount_ = toStr(await xfiToken.reserveAmount.call());
+
+        xfiReserveAmount_.should.be.equal(xfiReserveAmount);
 
         // Check events emitted during transaction.
 
@@ -528,6 +550,11 @@ describe('Ethereum XFI Exchange', () => {
         // Update the vesting XFI total supply.
         xfiTotalSupply.vesting = await increaseXfiTotalSupply(xfiToken, xfiTotalSupply.vesting, amountIn);
 
+        // Update the XFI reserve amount.
+        xfiReserveAmount = bigInt(xfiReserveAmount)
+            .minus(expectedAmountOut)
+            .toString(10);
+
         // Expected values after the swap.
         const expectedXfiTotalSupplyAfter        = await calculateXfiTotalSupply(xfiToken, xfiTotalSupply);
         const expectedUserWingsBalanceAfter      = '0';
@@ -573,6 +600,12 @@ describe('Ethereum XFI Exchange', () => {
         userWingsBalanceAfter.should.be.equal(expectedUserWingsBalanceAfter);
         userXfiBalanceAfter.should.be.equal(expectedUserXfiBalanceAfter);
         exchangeWingsBalanceAfter.should.be.equal(expectedExchangeWingsBalanceAfter);
+
+        // Check the XFI reserve amount.
+
+        const xfiReserveAmount_ = toStr(await xfiToken.reserveAmount.call());
+
+        xfiReserveAmount_.should.be.equal(xfiReserveAmount);
 
         // Check events emitted during transaction.
 
@@ -663,7 +696,7 @@ describe('Ethereum XFI Exchange', () => {
     });
 
     it('swap WINGS-XFI (second user, second day)', async () => {
-        const vestingDuration       = Number(await xfiToken.VESTING_DURATION.call()) / ONE_DAY;
+        const vestingDurationDays   = Number(await xfiToken.VESTING_DURATION_DAYS.call());
         const vestingDaysSinceStart = Number(await xfiToken.vestingDaysSinceStart.call());
 
         vestingDaysSinceStart.should.be.equal(2);
@@ -672,7 +705,7 @@ describe('Ethereum XFI Exchange', () => {
         const amountIn = toWei('200');
 
         // Expected XFI amount to receive after the vesting end.
-        const expectedAmountOut = convertAmountUsingReverseRatio(amountIn, vestingDuration, vestingDaysSinceStart);
+        const expectedAmountOut = convertAmountUsingReverseRatio(amountIn, vestingDurationDays, vestingDaysSinceStart);
 
         // Expected values before the swap.
         const expectedXfiTotalSupplyBefore       = await calculateXfiTotalSupply(xfiToken, xfiTotalSupply);
@@ -683,11 +716,16 @@ describe('Ethereum XFI Exchange', () => {
         // Update the vesting XFI total supply.
         xfiTotalSupply.vesting = await increaseXfiTotalSupply(xfiToken, xfiTotalSupply.vesting, amountIn);
 
+        // Update the XFI reserve amount.
+        xfiReserveAmount = bigInt(xfiReserveAmount)
+            .minus(expectedAmountOut)
+            .toString(10);
+
         // Expected values after the swap.
         const expectedXfiTotalSupplyAfter        = await calculateXfiTotalSupply(xfiToken, xfiTotalSupply);
         const expectedUserWingsBalanceAfter      = '0';
         const expectedUserXfiBalanceAfter        = bigInt(expectedUserXfiBalanceBefore)
-            .plus(convertAmountUsingRatio(expectedAmountOut, vestingDuration, vestingDaysSinceStart))
+            .plus(convertAmountUsingRatio(expectedAmountOut, vestingDurationDays, vestingDaysSinceStart))
             .toString(10);
         const expectedExchangeWingsBalanceAfter  = toWei('400');
 
@@ -728,6 +766,12 @@ describe('Ethereum XFI Exchange', () => {
         userWingsBalanceAfter.should.be.equal(expectedUserWingsBalanceAfter);
         userXfiBalanceAfter.should.be.equal(expectedUserXfiBalanceAfter);
         exchangeWingsBalanceAfter.should.be.equal(expectedExchangeWingsBalanceAfter);
+
+        // Check the XFI reserve amount.
+
+        const xfiReserveAmount_ = toStr(await xfiToken.reserveAmount.call());
+
+        xfiReserveAmount_.should.be.equal(xfiReserveAmount);
 
         // Check events emitted during transaction.
 
@@ -1146,6 +1190,12 @@ describe('Ethereum XFI Exchange', () => {
         firstLog.event.should.be.equal('WINGSWithdrawal');
         firstLog.args.to.should.be.equal(creator.address);
         toStr(firstLog.args.amount).should.be.equal(amountToWithdraw);
+    });
+
+    it('reserve amount is valid', async () => {
+        const xfiReserveAmount_ = toStr(await xfiToken.reserveAmount.call());
+
+        xfiReserveAmount_.should.be.equal(xfiReserveAmount);
     });
 
     it('total supply of XFI is valid', async () => {

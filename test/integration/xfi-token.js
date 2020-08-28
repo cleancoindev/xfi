@@ -803,20 +803,24 @@ describe('XFI Token', () => {
     });
 
     it('minter burns user tokens', async () => {
-        /* TODO Check total supply. */
-
         const amountToBurn = toWei('10');
+
+        const totalSupplyBefore = toStr(await token.totalSupply.call());
+
+        const expectedTotalSupplyBefore = amountToBurn;
+
+        totalSupplyBefore.should.be.equal(expectedTotalSupplyBefore);
 
         const txResult = await token.burnFrom(secondUser.address, amountToBurn, {from: minter.address});
 
         const expectedSecondUserBalance = '0';
-        const expectedTotalSupply       = '0';
+        const expectedTotalSupplyAfter  = '0';
 
         const secondUserBalanceAfter = toStr(await token.balanceOf.call(secondUser.address));
         const totalSupplyAfter       = toStr(await token.totalSupply.call());
 
         secondUserBalanceAfter.should.be.equal(expectedSecondUserBalance);
-        totalSupplyAfter.should.be.equal(expectedTotalSupply);
+        totalSupplyAfter.should.be.equal(expectedTotalSupplyAfter);
 
         // Check events emitted during transaction.
 
@@ -907,24 +911,25 @@ describe('XFI Token', () => {
     });
 
     it('withdraw reserve', async () => {
-        const reserveAmountBefore = toStr(await token.reserveAmount.call());
+        const totalSupplyBefore    = toStr(await token.totalSupply.call());
+        const creatorBalanceBefore = toStr(await token.balanceOf.call(creator.address));
+        const reserveAmountBefore  = toStr(await token.reserveAmount.call());
 
-        const totalSupply = toStr(await token.totalSupply.call());
+        const expectedTotalSupplyBefore    = '0';
+        const expectedCreatorBalanceBefore = '0';
 
-        /* BUG in total supply and/or reserve. */
-
-        console.log('Total supply:', totalSupply);
-        console.log('Reserve amount before:', reserveAmountBefore);
+        creatorBalanceBefore.should.be.equal(expectedCreatorBalanceBefore);
+        totalSupplyBefore.should.be.equal(expectedTotalSupplyBefore);
 
         const txResult = await token.withdrawReserve(creator.address, {from: creator.address});
-        const reserveAmountAfter = toStr(await token.reserveAmount.call());
+
+        const reserveAmountAfter  = toStr(await token.reserveAmount.call());
+        const creatorBalanceAfter = toStr(await token.balanceOf.call(creator.address));
+        const totalSupplyAfter    = toStr(await token.totalSupply.call());
 
         reserveAmountAfter.should.be.equal('0');
-
-        const creatorBalance = toStr(await token.balanceOf.call(creator.address));
-        console.log('Creator balance:', creatorBalance);
-
-        creatorBalance.should.be.equal(reserveAmountBefore);
+        creatorBalanceAfter.should.be.equal(reserveAmountBefore);
+        totalSupplyAfter.should.be.equal(creatorBalanceAfter);
 
         // Check events emitted during transaction.
 
