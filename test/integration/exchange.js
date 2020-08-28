@@ -267,7 +267,7 @@ describe('Ethereum XFI Exchange', () => {
 
     it('transfer first user some WINGS tokens', async () => {
         // Initial user WINGS balance.
-        const amountToTransfer = toWei('200');
+        const amountToTransfer = toWei('300');
 
         // Transfer WINGS tokens.
         await wingsToken.transfer(firstUser.address, amountToTransfer, {from: creator.address});
@@ -434,7 +434,7 @@ describe('Ethereum XFI Exchange', () => {
 
         // Expected values before the swap.
         const expectedXfiTotalSupplyBefore       = await calculateXfiTotalSupply(xfiToken, xfiTotalSupply);
-        const expectedUserWingsBalanceBefore     = toWei('200');
+        const expectedUserWingsBalanceBefore     = toWei('300');
         const expectedUserXfiBalanceBefore       = '0';
         const expectedExchangeWingsBalanceBefore = EXCHANGE_WINGS_START;
 
@@ -448,9 +448,13 @@ describe('Ethereum XFI Exchange', () => {
 
         // Expected values after the swap.
         const expectedXfiTotalSupplyAfter        = await calculateXfiTotalSupply(xfiToken, xfiTotalSupply);
-        const expectedUserWingsBalanceAfter      = toWei('100');
+        const expectedUserWingsBalanceAfter      = bigInt(expectedUserWingsBalanceBefore)
+            .minus(amountIn)
+            .toString(10);
         const expectedUserXfiBalanceAfter        = convertAmountUsingRatio(amountIn, vestingDurationDays, vestingDaysSinceStart);
-        const expectedExchangeWingsBalanceAfter  = toWei('100');
+        const expectedExchangeWingsBalanceAfter  = bigInt(expectedExchangeWingsBalanceBefore)
+            .plus(amountIn)
+            .toString(10);
 
         // Balances check before the swap.
         const userWingsBalanceBefore     = toStr(await wingsToken.balanceOf.call(firstUser.address));
@@ -543,7 +547,7 @@ describe('Ethereum XFI Exchange', () => {
 
         // Expected values before the swap.
         const expectedXfiTotalSupplyBefore       = await calculateXfiTotalSupply(xfiToken, xfiTotalSupply);
-        const expectedUserWingsBalanceBefore     = toWei('100');
+        const expectedUserWingsBalanceBefore     = toWei('200');
         const expectedUserXfiBalanceBefore       = convertAmountUsingRatio(toWei('100'), vestingDurationDays, vestingDaysSinceStart);
         const expectedExchangeWingsBalanceBefore = toWei('100');
 
@@ -557,11 +561,15 @@ describe('Ethereum XFI Exchange', () => {
 
         // Expected values after the swap.
         const expectedXfiTotalSupplyAfter        = await calculateXfiTotalSupply(xfiToken, xfiTotalSupply);
-        const expectedUserWingsBalanceAfter      = '0';
+        const expectedUserWingsBalanceAfter      = bigInt(expectedUserWingsBalanceBefore)
+            .minus(amountIn)
+            .toString(10);
         const expectedUserXfiBalanceAfter        = bigInt(expectedUserXfiBalanceBefore)
             .plus(convertAmountUsingRatio(expectedAmountOut, vestingDurationDays, vestingDaysSinceStart))
             .toString(10);
-        const expectedExchangeWingsBalanceAfter  = toWei('200');
+        const expectedExchangeWingsBalanceAfter  = bigInt(expectedExchangeWingsBalanceBefore)
+            .plus(amountIn)
+            .toString(10);
 
         // Balances check before the swap.
         const userWingsBalanceBefore     = toStr(await wingsToken.balanceOf.call(firstUser.address));
@@ -723,11 +731,15 @@ describe('Ethereum XFI Exchange', () => {
 
         // Expected values after the swap.
         const expectedXfiTotalSupplyAfter        = await calculateXfiTotalSupply(xfiToken, xfiTotalSupply);
-        const expectedUserWingsBalanceAfter      = '0';
+        const expectedUserWingsBalanceAfter      = bigInt(expectedUserWingsBalanceBefore)
+            .minus(amountIn)
+            .toString(10);
         const expectedUserXfiBalanceAfter        = bigInt(expectedUserXfiBalanceBefore)
             .plus(convertAmountUsingRatio(expectedAmountOut, vestingDurationDays, vestingDaysSinceStart))
             .toString(10);
-        const expectedExchangeWingsBalanceAfter  = toWei('400');
+        const expectedExchangeWingsBalanceAfter  = bigInt(expectedExchangeWingsBalanceBefore)
+            .plus(amountIn)
+            .toString(10);
 
         // Balances check before the swap.
         const userWingsBalanceBefore     = toStr(await wingsToken.balanceOf.call(secondUser.address));
@@ -927,6 +939,108 @@ describe('Ethereum XFI Exchange', () => {
         spentVestedBalance.should.be.equal(expectedSpentVestedBalance);
     });
 
+    it('move time to last day', async () => {
+        const now        = Math.floor(Date.now() / 1000);
+        const vestingEnd = await xfiToken.vestingEnd.call();
+
+        await moveTime(vestingEnd - now - 2 * ONE_DAY + 1);
+    });
+
+    it('swap WINGS-XFI (first user, last day)', async () => {
+        const vestingDurationDays   = Number(await xfiToken.VESTING_DURATION_DAYS.call());
+        const vestingDaysSinceStart = Number(await xfiToken.vestingDaysSinceStart.call());
+
+        vestingDaysSinceStart.should.be.equal(vestingDurationDays);
+
+        // Amount of WINGS to swap.
+        const amountIn = toWei('100');
+
+        // Expected XFI amount to receive after the vesting end.
+        const expectedAmountOut = convertAmountUsingReverseRatio(amountIn, vestingDurationDays, vestingDaysSinceStart);
+
+        // Expected values before the swap.
+        const expectedXfiTotalSupplyBefore       = await calculateXfiTotalSupply(xfiToken, xfiTotalSupply);
+        const expectedUserWingsBalanceBefore     = toWei('100');
+        const expectedUserXfiBalanceBefore       = bigInt(convertAmountUsingRatio(toWei('100'), vestingDurationDays, vestingDaysSinceStart))
+            .plus(convertAmountUsingRatio(convertAmountUsingReverseRatio(toWei('100'), vestingDurationDays, 2), vestingDurationDays, vestingDaysSinceStart))
+            .minus(toWei('2'))
+            .toString(10);
+        const expectedExchangeWingsBalanceBefore = toWei('400');
+
+        // Update the vesting XFI total supply.
+        xfiTotalSupply.vesting = await increaseXfiTotalSupply(xfiToken, xfiTotalSupply.vesting, amountIn);
+
+        // Update the XFI reserve amount.
+        xfiReserveAmount = bigInt(xfiReserveAmount)
+            .minus(expectedAmountOut)
+            .toString(10);
+
+        // Expected values after the swap.
+        const expectedXfiTotalSupplyAfter        = await calculateXfiTotalSupply(xfiToken, xfiTotalSupply);
+        const expectedUserWingsBalanceAfter      = '0';
+        const expectedUserXfiBalanceAfter        = bigInt(expectedUserXfiBalanceBefore)
+            .plus(convertAmountUsingRatio(expectedAmountOut, vestingDurationDays, vestingDaysSinceStart))
+            .toString(10);
+        const expectedExchangeWingsBalanceAfter  = bigInt(expectedExchangeWingsBalanceBefore)
+            .plus(amountIn)
+            .toString(10);
+
+        // Balances check before the swap.
+        const userWingsBalanceBefore     = toStr(await wingsToken.balanceOf.call(firstUser.address));
+        const userXfiBalanceBefore       = toStr(await xfiToken.balanceOf.call(firstUser.address));
+        const exchangeWingsBalanceBefore = toStr(await wingsToken.balanceOf.call(exchange.address));
+
+        userWingsBalanceBefore.should.be.equal(expectedUserWingsBalanceBefore);
+        userXfiBalanceBefore.should.be.equal(expectedUserXfiBalanceBefore);
+        exchangeWingsBalanceBefore.should.be.equal(expectedExchangeWingsBalanceBefore);
+
+        // XFI total supply check before the swap.
+        const xfiTotalSupplyBefore = toStr(await xfiToken.totalSupply.call());
+
+        xfiTotalSupplyBefore.should.be.equal(expectedXfiTotalSupplyBefore);
+
+        // Approve the Exchange to spend `amountIn` of WINGS tokens before the swap.
+        await wingsToken.approve(exchange.address, amountIn, {from: firstUser.address});
+
+        /* ▲ Before swap ▲ */
+
+        // Swap WINGS for XFI.
+        const txResult = await exchange.swapWINGSForXFI(amountIn, {from: firstUser.address});
+
+        /* ▼ After swap ▼ */
+
+        // XFI total supply check after the swap.
+        const xfiTotalSupplyAfter = toStr(await xfiToken.totalSupply.call());
+
+        xfiTotalSupplyAfter.should.be.equal(expectedXfiTotalSupplyAfter);
+
+        // Balances check after the swap.
+        const userWingsBalanceAfter     = toStr(await wingsToken.balanceOf.call(firstUser.address));
+        const userXfiBalanceAfter       = toStr(await xfiToken.balanceOf.call(firstUser.address));
+        const exchangeWingsBalanceAfter = toStr(await wingsToken.balanceOf.call(exchange.address));
+
+        userWingsBalanceAfter.should.be.equal(expectedUserWingsBalanceAfter);
+        userXfiBalanceAfter.should.be.equal(expectedUserXfiBalanceAfter);
+        exchangeWingsBalanceAfter.should.be.equal(expectedExchangeWingsBalanceAfter);
+
+        // Check the XFI reserve amount.
+
+        const xfiReserveAmount_ = toStr(await xfiToken.reserveAmount.call());
+
+        xfiReserveAmount_.should.be.equal(xfiReserveAmount);
+
+        // Check events emitted during transaction.
+
+        txResult.logs.length.should.be.equal(1);
+
+        const firstLog = txResult.logs[0];
+
+        firstLog.event.should.be.equal('SwapWINGSForXFI');
+        firstLog.args.sender.should.be.equal(firstUser.address);
+        toStr(firstLog.args.amountIn).should.be.equal(amountIn);
+        toStr(firstLog.args.amountOut).should.be.equal(expectedAmountOut);
+    });
+
     it('doesn\'t allow to migrate vesting balance that is equal to zero', async () => {
         const BYTE_ADDRESS = '0x' + '1'.repeat(64);
 
@@ -1064,13 +1178,16 @@ describe('Ethereum XFI Exchange', () => {
 
         const expectedFirstUserBalance              = bigInt(convertAmountUsingReverseRatio(toWei('100'), vestingDuration, 1))
             .plus(convertAmountUsingReverseRatio(toWei('100'), vestingDuration, 2))
+            .plus(convertAmountUsingReverseRatio(toWei('100'), vestingDuration, vestingDuration))
             .minus(toWei('2'))
             .toString(10);
         const expectedFirstUserTotalVestedBalance   = bigInt(convertAmountUsingReverseRatio(toWei('100'), vestingDuration, 1))
             .plus(convertAmountUsingReverseRatio(toWei('100'), vestingDuration, 2))
+            .plus(convertAmountUsingReverseRatio(toWei('100'), vestingDuration, vestingDuration))
             .toString(10);
         const expectedFirstUserUnspentVestedBalance = bigInt(convertAmountUsingReverseRatio(toWei('100'), vestingDuration, 1))
             .plus(convertAmountUsingReverseRatio(toWei('100'), vestingDuration, 2))
+            .plus(convertAmountUsingReverseRatio(toWei('100'), vestingDuration, vestingDuration))
             .minus(toWei('2'))
             .toString(10);
         const expectedFirstUserSpentVestedBalance   = toWei('2');
@@ -1156,12 +1273,12 @@ describe('Ethereum XFI Exchange', () => {
         // Destination address.
         const to = creator.address;
 
-        // Amount of WINGS to withdraw.
-        const amountToWithdraw = toWei('400');
-
         // Expected values.
-        const expectedExchangeWingsBalanceBefore = toWei('400');
+        const expectedExchangeWingsBalanceBefore = toWei('500');
         const expectedExchangeWingsBalanceAfter  = '0';
+
+        // Amount of WINGS to withdraw.
+        const amountToWithdraw = expectedExchangeWingsBalanceBefore;
 
         // Make sure that no tokens were lost during the exchanges.
         const expectedCreatorWingsBalanceAfter = WINGS_TOTAL_SUPPLY.toString(10);
