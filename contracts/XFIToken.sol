@@ -360,10 +360,12 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
      * Requirements:
      * - `to` is not the zero bytes.
      * - Vesting balance is greater than zero.
+     * - Vesting hasn't ended.
      */
     function migrateVestingBalance(bytes32 to) external override nonReentrant returns (bool) {
         require(to != bytes32(0), 'XFIToken: migrate to the zero bytes');
         require(_migratingAllowed, 'XFIToken: migrating is disallowed');
+        require(block.timestamp < _vestingEnd, 'XFIToken: vesting has ended');
 
         uint256 vestingBalance = _vestingBalances[msg.sender];
 
@@ -588,10 +590,12 @@ contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
      * Requirements:
      * - `account` cannot be the zero address.
      * - Transferring is not stopped.
+     * - `amount` doesn't exceed reserve amount.
      */
     function _mint(address account, uint256 amount) internal {
         require(account != address(0), 'XFIToken: mint to the zero address');
         require(!_stopped, 'XFIToken: transferring is stopped');
+        require(_reserveAmount >= amount, 'XFIToken: mint amount exceeds reserve amount');
 
         _vestingTotalSupply = _vestingTotalSupply.add(amount);
 

@@ -698,8 +698,8 @@ describe('Ethereum XFI Exchange', () => {
         await xfiToken.burn(amountToBurn, {from: secondUser.address});
 
         // Update XFI total supply.
-        xfiTotalSupply.spentVested = bigInt(xfiTotalSupply.spentVested)
-            .plus(amountToBurn)
+        xfiTotalSupply.persistent = bigInt(xfiTotalSupply.persistent)
+            .minus(amountToBurn)
             .toString(10);
     });
 
@@ -898,24 +898,32 @@ describe('Ethereum XFI Exchange', () => {
         }
     });
 
-    it('second user migrates vesting balance', async () => {
+    it('migrate vesting balance (second user, second day)', async () => {
         const BYTE_ADDRESS = '0x' + '1'.repeat(64);
 
-        const vestingDuration = Number(await xfiToken.VESTING_DURATION.call()) / ONE_DAY;
+        const vestingDurationDays = Number(await xfiToken.VESTING_DURATION_DAYS.call());
+        const vestingDaysLeft     = Number(await xfiToken.vestingDaysLeft.call());
 
         // Update the absolute XFI total supply.
 
-        const expectedVestingBalance = convertAmountUsingReverseRatio(toWei('200'), vestingDuration, 2);
-        const expectedVestedBalance  = convertAmountUsingRatio(expectedVestingBalance, vestingDuration, 2);
+        const expectedVestingBalance = convertAmountUsingReverseRatio(toWei('200'), vestingDurationDays, 2);
+        const expectedVestedBalance  = convertAmountUsingRatio(expectedVestingBalance, vestingDurationDays, 2);
+
+        // Update total supply.
 
         xfiTotalSupply.vesting = bigInt(xfiTotalSupply.vesting)
-            .plus(expectedVestedBalance)
             .minus(expectedVestingBalance)
             .toString(10);
 
+        xfiTotalSupply.persistent = bigInt(xfiTotalSupply.persistent)
+            .plus(expectedVestedBalance)
+            .toString(10);
+
+        const expectedTotalSupplyAfter = await calculateXfiTotalSupply(xfiToken, xfiTotalSupply);
+
         /* ▲ Before migration ▲ */
 
-        await xfiToken.migrateVestingBalance(BYTE_ADDRESS, {from: secondUser.address});
+        const txResult = await xfiToken.migrateVestingBalance(BYTE_ADDRESS, {from: secondUser.address});
 
         /* ▼ After migration ▼ */
 
@@ -937,6 +945,24 @@ describe('Ethereum XFI Exchange', () => {
         totalVestedBalance.should.be.equal(expectedTotalVestedBalance);
         unspentVestedBalance.should.be.equal(expectedUnspentVestedBalance);
         spentVestedBalance.should.be.equal(expectedSpentVestedBalance);
+
+        // Check total supply.
+
+        const totalSupplyAfter = toStr(await xfiToken.totalSupply.call());
+
+        totalSupplyAfter.should.be.equal(expectedTotalSupplyAfter);
+
+        // Check events emitted during transaction.
+
+        txResult.logs.length.should.be.equal(1);
+
+        const firstLog = txResult.logs[0];
+
+        firstLog.event.should.be.equal('VestingBalanceMigrated');
+        firstLog.args.from.should.be.equal(secondUser.address);
+        firstLog.args.to.should.be.equal(BYTE_ADDRESS);
+        Number(firstLog.args.vestingDaysLeft).should.be.equal(vestingDaysLeft);
+        toStr(firstLog.args.vestingBalance).should.be.equal(expectedVestingBalance);
     });
 
     it('move time to last day', async () => {
@@ -1039,6 +1065,83 @@ describe('Ethereum XFI Exchange', () => {
         firstLog.args.sender.should.be.equal(firstUser.address);
         toStr(firstLog.args.amountIn).should.be.equal(amountIn);
         toStr(firstLog.args.amountOut).should.be.equal(expectedAmountOut);
+    });
+
+    it('migrate vesting balance (first user, last day)', async () => {
+        const BYTE_ADDRESS = '0x' + '1'.repeat(64);
+
+        const vestingDurationDays = Number(await xfiToken.VESTING_DURATION_DAYS.call());
+        const vestingDaysLeft     = Number(await xfiToken.vestingDaysLeft.call());
+
+        // Update the absolute XFI total supply.
+
+        const expectedVestingBalance = bigInt(convertAmountUsingReverseRatio(toWei('100'), vestingDurationDays, 1))
+            .plus(convertAmountUsingReverseRatio(toWei('100'), vestingDurationDays, 2))
+            .plus(convertAmountUsingReverseRatio(toWei('100'), vestingDurationDays, vestingDurationDays))
+            .toString(10);
+        const expectedVestedBalance  = convertAmountUsingRatio(expectedVestingBalance, vestingDurationDays, vestingDurationDays);
+
+        const spentVestedBalanceBefore = toStr(await xfiToken.spentVestedBalanceOf.call(firstUser.address));
+
+        // Update total supply.
+
+        xfiTotalSupply.persistent = bigInt(xfiTotalSupply.persistent)
+            .plus(expectedVestedBalance)
+            .minus(toWei('2'))
+            .toString(10);
+
+        xfiTotalSupply.vesting = bigInt(xfiTotalSupply.vesting)
+            .minus(expectedVestingBalance)
+            .toString(10);
+
+        xfiTotalSupply.spentVested = bigInt(xfiTotalSupply.spentVested)
+            .minus(spentVestedBalanceBefore)
+            .toString(10);
+
+        const expectedTotalSupplyAfter = await calculateXfiTotalSupply(xfiToken, xfiTotalSupply);
+
+        /* ▲ Before migration ▲ */
+
+        const txResult = await xfiToken.migrateVestingBalance(BYTE_ADDRESS, {from: firstUser.address});
+
+        /* ▼ After migration ▼ */
+
+        // Check balances.
+
+        const balance              = toStr(await xfiToken.balanceOf.call(firstUser.address));
+        const totalVestedBalance   = toStr(await xfiToken.totalVestedBalanceOf.call(firstUser.address));
+        const unspentVestedBalance = toStr(await xfiToken.unspentVestedBalanceOf.call(firstUser.address));
+        const spentVestedBalance   = toStr(await xfiToken.spentVestedBalanceOf.call(firstUser.address));
+
+        const expectedBalance              = bigInt(expectedVestedBalance)
+            .minus(toWei('2'))
+            .toString(10);
+        const expectedTotalVestedBalance   = '0';
+        const expectedUnspentVestedBalance = '0';
+        const expectedSpentVestedBalance   = '0';
+
+        balance.should.be.equal(expectedBalance);
+        totalVestedBalance.should.be.equal(expectedTotalVestedBalance);
+        unspentVestedBalance.should.be.equal(expectedUnspentVestedBalance);
+        spentVestedBalance.should.be.equal(expectedSpentVestedBalance);
+
+        // Check total supply.
+
+        const totalSupplyAfter = toStr(await xfiToken.totalSupply.call());
+
+        totalSupplyAfter.should.be.equal(expectedTotalSupplyAfter);
+
+        // Check events emitted during transaction.
+
+        txResult.logs.length.should.be.equal(1);
+
+        const firstLog = txResult.logs[0];
+
+        firstLog.event.should.be.equal('VestingBalanceMigrated');
+        firstLog.args.from.should.be.equal(firstUser.address);
+        firstLog.args.to.should.be.equal(BYTE_ADDRESS);
+        Number(firstLog.args.vestingDaysLeft).should.be.equal(vestingDaysLeft);
+        toStr(firstLog.args.vestingBalance).should.be.equal(expectedVestingBalance);
     });
 
     it('doesn\'t allow to migrate vesting balance that is equal to zero', async () => {
@@ -1171,31 +1274,24 @@ describe('Ethereum XFI Exchange', () => {
     it('check first user\'s balance', async () => {
         const vestingDuration = Number(await xfiToken.VESTING_DURATION.call()) / ONE_DAY;
 
-        const firstUserBalance              = toStr(await xfiToken.balanceOf.call(firstUser.address));
-        const firstUserTotalVestedBalance   = toStr(await xfiToken.totalVestedBalanceOf.call(firstUser.address));
-        const firstUserUnspentVestedBalance = toStr(await xfiToken.unspentVestedBalanceOf.call(firstUser.address));
-        const firstUserSpentVestedBalance   = toStr(await xfiToken.spentVestedBalanceOf.call(firstUser.address));
+        const balance              = toStr(await xfiToken.balanceOf.call(firstUser.address));
+        const totalVestedBalance   = toStr(await xfiToken.totalVestedBalanceOf.call(firstUser.address));
+        const unspentVestedBalance = toStr(await xfiToken.unspentVestedBalanceOf.call(firstUser.address));
+        const spentVestedBalance   = toStr(await xfiToken.spentVestedBalanceOf.call(firstUser.address));
 
-        const expectedFirstUserBalance              = bigInt(convertAmountUsingReverseRatio(toWei('100'), vestingDuration, 1))
+        const expectedBalance              = bigInt(convertAmountUsingReverseRatio(toWei('100'), vestingDuration, 1))
             .plus(convertAmountUsingReverseRatio(toWei('100'), vestingDuration, 2))
             .plus(convertAmountUsingReverseRatio(toWei('100'), vestingDuration, vestingDuration))
             .minus(toWei('2'))
             .toString(10);
-        const expectedFirstUserTotalVestedBalance   = bigInt(convertAmountUsingReverseRatio(toWei('100'), vestingDuration, 1))
-            .plus(convertAmountUsingReverseRatio(toWei('100'), vestingDuration, 2))
-            .plus(convertAmountUsingReverseRatio(toWei('100'), vestingDuration, vestingDuration))
-            .toString(10);
-        const expectedFirstUserUnspentVestedBalance = bigInt(convertAmountUsingReverseRatio(toWei('100'), vestingDuration, 1))
-            .plus(convertAmountUsingReverseRatio(toWei('100'), vestingDuration, 2))
-            .plus(convertAmountUsingReverseRatio(toWei('100'), vestingDuration, vestingDuration))
-            .minus(toWei('2'))
-            .toString(10);
-        const expectedFirstUserSpentVestedBalance   = toWei('2');
+        const expectedTotalVestedBalance   = '0';
+        const expectedUnspentVestedBalance = '0';
+        const expectedSpentVestedBalance   = '0';
 
-        firstUserBalance.should.be.equal(expectedFirstUserBalance);
-        firstUserTotalVestedBalance.should.be.equal(expectedFirstUserTotalVestedBalance);
-        firstUserUnspentVestedBalance.should.be.equal(expectedFirstUserUnspentVestedBalance);
-        firstUserSpentVestedBalance.should.be.equal(expectedFirstUserSpentVestedBalance);
+        balance.should.be.equal(expectedBalance);
+        totalVestedBalance.should.be.equal(expectedTotalVestedBalance);
+        unspentVestedBalance.should.be.equal(expectedUnspentVestedBalance);
+        spentVestedBalance.should.be.equal(expectedSpentVestedBalance);
     });
 
     it('check second user\'s balance', async () => {
@@ -1230,6 +1326,20 @@ describe('Ethereum XFI Exchange', () => {
             if (!error.reason) { throw error; }
 
             error.reason.should.be.equal('Exchange: swapping has ended');
+        }
+    });
+
+    it('doesn\'t allow to migrate vesting XFI after the vesting end', async () => {
+        const BYTE_ADDRESS = '0x' + '1'.repeat(64);
+
+        try {
+            await xfiToken.migrateVestingBalance(BYTE_ADDRESS, {from: firstUser.address});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('XFIToken: vesting has ended');
         }
     });
 
@@ -1322,20 +1432,11 @@ describe('Ethereum XFI Exchange', () => {
 
         xfiTotalSupply_.should.be.equal(expectedXfiTotalSupply);
 
-        /**
-         * NOTE
-         *
-         * Summary
-         *
-         * We made 5 swaps with total amount of around 500 XFI.
-         *
-         * The result is 498.351648351648351647 XFI.
-         * The difference is 1.648351648351648353 XFI (0.33%).
-         *
-         * P.S. The difference is 0.33% not because of the remainder, but
-         * because 2 swaps were made on the second day, resulting in less amount
-         * of tokens vested by the end of the vesting period.
-         */
+        // Check the state total supply.
+
+        xfiTotalSupply.persistent.should.be.equal(xfiTotalSupply_);
+        xfiTotalSupply.vesting.should.be.equal('0');
+        xfiTotalSupply.spentVested.should.be.equal('0');
     });
 
     after('stop the Test RPC', () => {

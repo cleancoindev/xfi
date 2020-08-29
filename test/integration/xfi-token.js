@@ -373,6 +373,24 @@ describe('XFI Token', () => {
         }
     });
 
+    it('doesn\'t allow to mint more XFI than the reserve amount', async () => {
+        const reserveAmount = toStr(await token.reserveAmount.call());
+
+        const amountToMint = bigInt(reserveAmount)
+            .plus('1')
+            .toString(10);
+
+        try {
+            await token.mint(minter.address, amountToMint, {from: minter.address});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('XFIToken: mint amount exceeds reserve amount');
+        }
+    });
+
     it('doesn\'t allow to mint tokens without vesting for zero address', async () => {
         try {
             await token.mintWithoutVesting(ZERO_ADDRESS, '1', {from: minter.address});
