@@ -13,8 +13,14 @@ const {getProvider} = require('provider');
 module.exports = {
     compilers: {
         solc: {
-            version: '0.6.11'
-        },
+            version: '0.6.11',
+            settings: {
+                optimizer: {
+                    enabled: true,
+                    runs: 200
+                }
+            }
+        }
     },
     networks: {
         development: {
@@ -38,6 +44,6 @@ module.exports = {
             gas: 2000000,
             gasPrice: 112000000000,
             skipDryRun: true
-        },
+        }
     }
 };
