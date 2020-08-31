@@ -2,7 +2,7 @@
 
 require('dotenv').config();
 
-const { getHDProvider } = require('./provider.js');
+const {getProvider} = require('provider');
 
 /**
  * Truffle configuration object.
@@ -13,8 +13,14 @@ const { getHDProvider } = require('./provider.js');
 module.exports = {
     compilers: {
         solc: {
-            version: '0.6.11'
-        },
+            version: '0.6.11',
+            settings: {
+                optimizer: {
+                    enabled: true,
+                    runs: 200
+                }
+            }
+        }
     },
     networks: {
         development: {
@@ -24,7 +30,7 @@ module.exports = {
         },
         ropsten: {
             provider: () => {
-                return getHDProvider();
+                return getProvider();
             },
             network_id: 3,
             gas: 8000000,
@@ -32,12 +38,12 @@ module.exports = {
         },
         mainnet: {
             provider: () => {
-                return getHDProvider();
+                return getProvider();
             },
             network_id: 1,
             gas: 2000000,
             gasPrice: 112000000000,
             skipDryRun: true
-        },
+        }
     }
 };

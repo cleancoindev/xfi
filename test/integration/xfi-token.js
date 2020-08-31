@@ -1,4 +1,4 @@
-/* global Web3 contract helpers TestRpc */
+/* global Web3 contract helpers TestRpc moveTime WEB3_PROVIDER_URL TEST_RPC_PORT */
 
 /**
  * Integration test which covers functionality of XFI Token.
@@ -8,21 +8,24 @@
 
 'use strict';
 
-const TEST_RPC_PORT = +process.env.TEST_RPC_PORT || 9545;
+const bigInt = require('big-integer');
 
-const web3 = new Web3(`http://localhost:${TEST_RPC_PORT}`);
+const web3 = new Web3(WEB3_PROVIDER_URL);
 
 const {toStr, toWei} = helpers;
 const {ZERO_ADDRESS} = helpers;
 
+const ONE_DAY = 86400;
+
 describe('XFI Token', () => {
-    const creator    = web3.eth.accounts.create();
-    const newOwner   = web3.eth.accounts.create();
-    const tempOwner  = web3.eth.accounts.create();
-    const minter     = web3.eth.accounts.create();
-    const firstUser  = web3.eth.accounts.create();
-    const secondUser = web3.eth.accounts.create();
-    const tmpUser    = web3.eth.accounts.create();
+    const creator       = web3.eth.accounts.create();
+    const newOwner      = web3.eth.accounts.create();
+    const tempOwner     = web3.eth.accounts.create();
+    const minter        = web3.eth.accounts.create();
+    const firstUser     = web3.eth.accounts.create();
+    const secondUser    = web3.eth.accounts.create();
+    const tmpUser       = web3.eth.accounts.create();
+    const maliciousUser = web3.eth.accounts.create();
 
     const testRpc = TestRpc({
         accounts: [
@@ -53,6 +56,10 @@ describe('XFI Token', () => {
             {
                 balance: toWei('10'),
                 secretKey: tmpUser.privateKey
+            },
+            {
+                balance: toWei('10'),
+                secretKey: maliciousUser.privateKey
             }
         ],
         locked: false
@@ -65,16 +72,92 @@ describe('XFI Token', () => {
     });
 
     before('deploy', async () => {
-        const web3Provider = new Web3.providers.HttpProvider(`http://localhost:${TEST_RPC_PORT}`);
+        const vestingStart = Math.floor((Date.now() / 1000) + ONE_DAY).toString();
+
+        const web3Provider = new Web3.providers.HttpProvider(WEB3_PROVIDER_URL);
 
         const TokenJson = require('build/contracts/XFIToken.json');
         const Token     = contract({abi: TokenJson.abi, unlinked_binary: TokenJson.bytecode});
         Token.setProvider(web3Provider);
 
-        token = await Token.new({from: creator.address});
+        token = await Token.new(vestingStart, {from: creator.address});
     });
 
-    it('correct values of the constants', async () => {
+    it('doesn\'t allow to change vesting start without owner access role', async () => {
+        try {
+            await token.changeVestingStart('0', {from: maliciousUser.address});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('XFIToken: sender is not owner');
+        }
+    });
+
+    it('doesn\'t allow to change to zero vesting start', async () => {
+        try {
+            await token.changeVestingStart('0', {from: creator.address});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('XFIToken: vesting start must be greater than current timestamp');
+        }
+    });
+
+    it('change vesting start', async () => {
+        const newVestingStart = Math.floor((Date.now() / 1000) + ONE_DAY * 2);
+
+        const vestingDuration = Number(await token.VESTING_DURATION.call());
+        const freezeDuration  = Number(await token.RESERVE_FREEZE_DURATION.call());
+
+        const expectedVestingEnd         = newVestingStart + vestingDuration;
+        const expectedReserveFrozenUntil = newVestingStart + freezeDuration;
+
+        const txResult = await token.changeVestingStart(toStr(newVestingStart), {from: creator.address});
+
+        const vestingStart       = Number(await token.vestingStart.call());
+        const vestingEnd         = Number(await token.vestingEnd.call());
+        const reserveFrozenUntil = Number(await token.reserveFrozenUntil.call());
+
+        vestingStart.should.be.equal(newVestingStart);
+        vestingEnd.should.be.equal(expectedVestingEnd);
+        reserveFrozenUntil.should.be.equal(expectedReserveFrozenUntil);
+
+        // Check events emitted during transaction.
+
+        txResult.logs.length.should.be.equal(1);
+
+        const firstLog = txResult.logs[0];
+
+        firstLog.event.should.be.equal('VestingStartChanged');
+        Number(firstLog.args.newVestingStart).should.be.equal(newVestingStart);
+        Number(firstLog.args.newVestingEnd).should.be.equal(expectedVestingEnd);
+        Number(firstLog.args.newReserveFrozenUntil).should.be.equal(expectedReserveFrozenUntil);
+    });
+
+    it('move time to the end of vesting period', async () => {
+        const vestingDaysSinceStartBefore = Number(await token.vestingDaysSinceStart.call());
+        const vestingDaysLeftBefore       = Number(await token.vestingDaysLeft.call());
+
+        vestingDaysSinceStartBefore.should.be.equal(0);
+        vestingDaysLeftBefore.should.be.equal(182);
+
+        const now        = Math.floor(Date.now() / 1000);
+        const vestingEnd = Number(await token.vestingEnd.call());
+
+        await moveTime(vestingEnd - now + 1);
+
+        const vestingDaysSinceStartAfter = Number(await token.vestingDaysSinceStart.call());
+        const vestingDaysLeftAfter       = Number(await token.vestingDaysLeft.call());
+
+        vestingDaysSinceStartAfter.should.be.equal(183);
+        vestingDaysLeftAfter.should.be.equal(0);
+    });
+
+    it('correct values of the default constants', async () => {
         const decimals = (await token.decimals.call()).toNumber();
         const name     = await token.name.call();
         const symbol   = await token.symbol.call();
@@ -82,6 +165,40 @@ describe('XFI Token', () => {
         decimals.should.be.equal(18);
         name.should.be.equal('dfinance');
         symbol.should.be.equal('XFI');
+    });
+
+    it('correct maximum vesting total supply', async () => {
+        const expectedMaxVestingTotalSupply = toWei('100000000');
+
+        const maxVestingTotalSupply = toStr(await token.MAX_VESTING_TOTAL_SUPPLY.call());
+
+        maxVestingTotalSupply.should.be.equal(expectedMaxVestingTotalSupply);
+    });
+
+    it('correct vesting duration', async () => {
+        const expectedVestingDurationDays = toStr(182);
+        const expectedVestingDuration     = bigInt(expectedVestingDurationDays)
+            .times(ONE_DAY)
+            .toString(10);
+
+        const vestingDuration     = toStr(await token.VESTING_DURATION.call());
+        const vestingDurationDays = toStr(await token.VESTING_DURATION_DAYS.call());
+
+        vestingDuration.should.be.equal(expectedVestingDuration);
+        vestingDurationDays.should.be.equal(expectedVestingDurationDays);
+    });
+
+    it('correct freeze duration', async () => {
+        const expectedReserveFreezeDurationDays = toStr(730);
+        const expectedReserveFreezeDuration     = bigInt(expectedReserveFreezeDurationDays)
+            .times(ONE_DAY)
+            .toString(10);
+
+        const reserveFreezeDuration     = toStr(await token.RESERVE_FREEZE_DURATION.call());
+        const reserveFreezeDurationDays = toStr(await token.RESERVE_FREEZE_DURATION_DAYS.call());
+
+        reserveFreezeDuration.should.be.equal(expectedReserveFreezeDuration);
+        reserveFreezeDurationDays.should.be.equal(expectedReserveFreezeDurationDays);
     });
 
     it('total supply is zero', async () => {
@@ -218,6 +335,18 @@ describe('XFI Token', () => {
         }
     });
 
+    it('doesn\'t allow to mint tokens without vesting before minter role was granted', async () => {
+        try {
+            await token.mintWithoutVesting(minter.address, '1', {from: minter.address});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('XFIToken: sender is not minter');
+        }
+    });
+
     it('add minter', async () => {
         const minterRole = await token.MINTER_ROLE.call();
 
@@ -235,6 +364,36 @@ describe('XFI Token', () => {
     it('doesn\'t allow to mint tokens for zero address', async () => {
         try {
             await token.mint(ZERO_ADDRESS, '1', {from: minter.address});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('XFIToken: mint to the zero address');
+        }
+    });
+
+    it('doesn\'t allow to mint more XFI than the reserve amount', async () => {
+        const reserveAmount = toStr(await token.reserveAmount.call());
+
+        const amountToMint = bigInt(reserveAmount)
+            .plus('1')
+            .toString(10);
+
+        try {
+            await token.mint(minter.address, amountToMint, {from: minter.address});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('XFIToken: mint amount exceeds reserve amount');
+        }
+    });
+
+    it('doesn\'t allow to mint tokens without vesting for zero address', async () => {
+        try {
+            await token.mintWithoutVesting(ZERO_ADDRESS, '1', {from: minter.address});
 
             throw Error('Should revert');
         } catch (error) {
@@ -274,24 +433,47 @@ describe('XFI Token', () => {
     });
 
     it('minter mints tokens for tmp user and user burns it', async () => {
+        // Amount of XFI to mint.
+        const amountToMint = toWei('10');
+
         const totalSupplyBefore = toStr(await token.totalSupply.call());
         const userBalanceBefore = toStr(await token.balanceOf.call(tmpUser.address));
 
         userBalanceBefore.should.be.equal('0');
 
-        const amountToMint = toWei('10');
+        /* ▲ Before mint ▲ */
+
         await token.mint(tmpUser.address, amountToMint, {from: minter.address});
 
-        const balanceAfter = toStr(await token.balanceOf.call(tmpUser.address));
-        balanceAfter.should.be.equal(amountToMint);
+        /* ▼ After mint ▼ */
+
+        const balanceAfterMint           = toStr(await token.balanceOf.call(tmpUser.address));
+        const totalVestedBalanceBefore   = toStr(await token.totalVestedBalanceOf.call(tmpUser.address));
+        const unspentVestedBalanceBefore = toStr(await token.unspentVestedBalanceOf.call(tmpUser.address));
+        const spentVestedBalanceBefore   = toStr(await token.spentVestedBalanceOf.call(tmpUser.address));
+
+        balanceAfterMint.should.be.equal(amountToMint);
+        totalVestedBalanceBefore.should.be.equal(amountToMint);
+        unspentVestedBalanceBefore.should.be.equal(amountToMint);
+        spentVestedBalanceBefore.should.be.equal('0');
+
+        /* ▲ Before burn ▲ */
 
         await token.burn(amountToMint, {from: tmpUser.address});
-        const totalSupplyAfter = toStr(await token.totalSupply.call());
 
-        totalSupplyBefore.should.be.equal(totalSupplyAfter);
-        const balanceAfterBurn = toStr(await token.balanceOf.call(tmpUser.address));
+        /* ▼ After burn ▼ */
 
+        const totalSupplyAfter          = toStr(await token.totalSupply.call());
+        const balanceAfterBurn          = toStr(await token.balanceOf.call(tmpUser.address));
+        const totalVestedBalanceAfter   = toStr(await token.totalVestedBalanceOf.call(tmpUser.address));
+        const unspentVestedBalanceAfter = toStr(await token.unspentVestedBalanceOf.call(tmpUser.address));
+        const spentVestedBalanceAfter   = toStr(await token.spentVestedBalanceOf.call(tmpUser.address));
+
+        totalSupplyAfter.should.be.equal(totalSupplyBefore);
         balanceAfterBurn.should.be.equal('0');
+        totalVestedBalanceAfter.should.be.equal(amountToMint);
+        unspentVestedBalanceAfter.should.be.equal('0');
+        spentVestedBalanceAfter.should.be.equal(amountToMint);
     });
 
     it('doesn\'t allow to transfer tokens to zero address', async () => {
@@ -626,7 +808,6 @@ describe('XFI Token', () => {
         }
     });
 
-
     it('doesn\'t allow to burn zero address tokens', async () => {
         try {
             await token.burnFrom(ZERO_ADDRESS, '1', {from: minter.address});
@@ -642,16 +823,22 @@ describe('XFI Token', () => {
     it('minter burns user tokens', async () => {
         const amountToBurn = toWei('10');
 
+        const totalSupplyBefore = toStr(await token.totalSupply.call());
+
+        const expectedTotalSupplyBefore = amountToBurn;
+
+        totalSupplyBefore.should.be.equal(expectedTotalSupplyBefore);
+
         const txResult = await token.burnFrom(secondUser.address, amountToBurn, {from: minter.address});
 
         const expectedSecondUserBalance = '0';
-        const expectedTotalSupply       = '0';
+        const expectedTotalSupplyAfter  = '0';
 
         const secondUserBalanceAfter = toStr(await token.balanceOf.call(secondUser.address));
         const totalSupplyAfter       = toStr(await token.totalSupply.call());
 
         secondUserBalanceAfter.should.be.equal(expectedSecondUserBalance);
-        totalSupplyAfter.should.be.equal(expectedTotalSupply);
+        totalSupplyAfter.should.be.equal(expectedTotalSupplyAfter);
 
         // Check events emitted during transaction.
 
@@ -707,6 +894,77 @@ describe('XFI Token', () => {
 
             error.reason.should.be.equal('XFIToken: sender is not minter');
         }
+    });
+
+    it('doesn\'t allow to withdraw reserve when it\'s frozen', async () => {
+        try {
+            await token.withdrawReserve(creator.address, {from: creator.address});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('XFIToken: reserve is frozen');
+        }
+    });
+
+    it('move time to the moment when reserve is available for withdrawal', async () => {
+        const reserveFrozenUntil = Number(await token.reserveFrozenUntil.call());
+
+        const secondsToMove = reserveFrozenUntil - Math.floor(Date.now() / 1000) + 1;
+
+        await moveTime(secondsToMove);
+    });
+
+    it('doesn\'t allow to withdraw reserve without the owner access role', async () => {
+        try {
+            await token.withdrawReserve(firstUser.address, {from: firstUser.address});
+
+            throw Error('Should revert');
+        } catch (error) {
+            if (!error.reason) { throw error; }
+
+            error.reason.should.be.equal('XFIToken: sender is not owner');
+        }
+    });
+
+    it('withdraw reserve', async () => {
+        const totalSupplyBefore    = toStr(await token.totalSupply.call());
+        const creatorBalanceBefore = toStr(await token.balanceOf.call(creator.address));
+        const reserveAmountBefore  = toStr(await token.reserveAmount.call());
+
+        const expectedTotalSupplyBefore    = '0';
+        const expectedCreatorBalanceBefore = '0';
+
+        creatorBalanceBefore.should.be.equal(expectedCreatorBalanceBefore);
+        totalSupplyBefore.should.be.equal(expectedTotalSupplyBefore);
+
+        const txResult = await token.withdrawReserve(creator.address, {from: creator.address});
+
+        const reserveAmountAfter  = toStr(await token.reserveAmount.call());
+        const creatorBalanceAfter = toStr(await token.balanceOf.call(creator.address));
+        const totalSupplyAfter    = toStr(await token.totalSupply.call());
+
+        reserveAmountAfter.should.be.equal('0');
+        creatorBalanceAfter.should.be.equal(reserveAmountBefore);
+        totalSupplyAfter.should.be.equal(creatorBalanceAfter);
+
+        // Check events emitted during transaction.
+
+        txResult.logs.length.should.be.equal(2);
+
+        const firstLog = txResult.logs[0];
+
+        firstLog.event.should.be.equal('Transfer');
+        firstLog.args.from.should.be.equal(ZERO_ADDRESS);
+        firstLog.args.to.should.be.equal(creator.address);
+        toStr(firstLog.args.value).should.be.equal(reserveAmountBefore);
+
+        const secondLog = txResult.logs[1];
+
+        secondLog.event.should.be.equal('ReserveWithdrawal');
+        secondLog.args.to.should.be.equal(creator.address);
+        toStr(secondLog.args.amount).should.be.equal(reserveAmountBefore);
     });
 
     it('(last) owner renounces', async () => {

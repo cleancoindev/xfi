@@ -3,6 +3,7 @@ pragma solidity 0.6.11;
 
 import '@openzeppelin/contracts/math/SafeMath.sol';
 import '@openzeppelin/contracts/access/AccessControl.sol';
+import '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 import './interfaces/IXFIToken.sol';
 
 /**
@@ -21,71 +22,68 @@ import './interfaces/IXFIToken.sol';
  * functions have been added to mitigate the well-known issues around setting
  * allowances.
  */
-contract XFIToken is AccessControl, IXFIToken {
+contract XFIToken is AccessControl, ReentrancyGuard, IXFIToken {
     using SafeMath for uint256;
     using Address for address;
 
-    mapping (address => uint256) private _balances;
-
-    mapping (address => mapping (address => uint256)) private _allowances;
-
-    uint256 private _totalSupply;
-
     string private constant _name = 'dfinance';
+
     string private constant _symbol = 'XFI';
+
     uint8 private constant _decimals = 18;
 
     bytes32 public constant MINTER_ROLE = keccak256('minter');
 
+    uint256 public constant override MAX_VESTING_TOTAL_SUPPLY = 1e26; // 100 million XFI.
+
+    uint256 public constant override VESTING_DURATION_DAYS = 182;
+    uint256 public constant override VESTING_DURATION = 182 days;
+
+    /**
+     * @dev Reserve is the final amount of tokens that weren't distributed
+     * during the vesting.
+     */
+    uint256 public constant override RESERVE_FREEZE_DURATION_DAYS = 730; // Around 2 years.
+    uint256 public constant override RESERVE_FREEZE_DURATION = 730 days;
+
+    mapping (address => uint256) private _vestingBalances;
+
+    mapping (address => uint256) private _balances;
+
+    mapping (address => uint256) private _spentVestedBalances;
+
+    mapping (address => mapping (address => uint256)) private _allowances;
+
+    uint256 private _vestingTotalSupply;
+
+    uint256 private _totalSupply;
+
+    uint256 private _spentVestedTotalSupply;
+
+    uint256 private _vestingStart;
+
+    uint256 private _vestingEnd;
+
+    uint256 private _reserveFrozenUntil;
+
     bool private _stopped = false;
+
+    bool private _migratingAllowed = false;
+
+    uint256 private _reserveAmount;
 
     /**
      * Sets {DEFAULT_ADMIN_ROLE} (alias `owner`) role for caller.
+     * Assigns vesting and freeze period dates.
      */
-    constructor () public {
+    constructor (uint256 vestingStart_) public {
+        require(vestingStart_ > block.timestamp, 'XFIToken: vesting start must be greater than current timestamp');
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
-    }
 
-    /**
-     * Returns name of the token.
-     */
-    function name() external view override returns (string memory) {
-        return _name;
-    }
-
-    /**
-     * Returns symbol of the token.
-     */
-    function symbol() external view override returns (string memory) {
-        return _symbol;
-    }
-
-    /**
-     * Returns number of decimals of the token.
-     */
-    function decimals() external view override returns (uint8) {
-        return _decimals;
-    }
-
-    /**
-     * Returns total supply of the token.
-     */
-    function totalSupply() external view override returns (uint256) {
-        return _totalSupply;
-    }
-
-    /**
-     * Returns token balance of the `account`.
-     */
-    function balanceOf(address account) external view override returns (uint256) {
-        return _balances[account];
-    }
-
-    /**
-     * Returnes amount of `owner`'s tokens that `spender` is allowed to transfer.
-     */
-    function allowance(address owner, address spender) external view override returns (uint256) {
-        return _allowances[owner][spender];
+        _vestingStart = vestingStart_;
+        _vestingEnd = vestingStart_.add(VESTING_DURATION);
+        _reserveFrozenUntil = vestingStart_.add(RESERVE_FREEZE_DURATION);
+        _reserveAmount = MAX_VESTING_TOTAL_SUPPLY;
     }
 
     /**
@@ -198,6 +196,24 @@ contract XFIToken is AccessControl, IXFIToken {
     }
 
     /**
+     * Creates `amount` tokens and assigns them to `account`, increasing
+     * the total supply without vesting.
+     *
+     * Emits a {Transfer} event with `from` set to the zero address.
+     *
+     * Requirements:
+     * - Caller must have minter role.
+     * - `account` cannot be the zero address.
+     */
+    function mintWithoutVesting(address account, uint256 amount) external override returns (bool) {
+        require(hasRole(MINTER_ROLE, msg.sender), 'XFIToken: sender is not minter');
+
+        _mintWithoutVesting(account, amount);
+
+        return true;
+    }
+
+    /**
      * Destroys `amount` tokens from `account`, reducing the
      * total supply.
      *
@@ -205,11 +221,10 @@ contract XFIToken is AccessControl, IXFIToken {
      *
      * Requirements:
      * - Caller must have minter role.
-     * - `account` cannot be the zero address.
-     * - `account` must have at least `amount` tokens.
      */
     function burnFrom(address account, uint256 amount) external override returns (bool) {
         require(hasRole(MINTER_ROLE, msg.sender), 'XFIToken: sender is not minter');
+
         _burn(account, amount);
 
         return true;
@@ -220,9 +235,6 @@ contract XFIToken is AccessControl, IXFIToken {
      * total supply.
      *
      * Emits a {Transfer} event with `to` set to the zero address.
-     *
-     * Requirements:
-     * - `account` must have at least `amount` tokens.
      */
     function burn(uint256 amount) external override returns (bool) {
         _burn(msg.sender, amount);
@@ -230,80 +242,28 @@ contract XFIToken is AccessControl, IXFIToken {
         return true;
     }
 
-
     /**
-     * Moves tokens `amount` from `sender` to `recipient`.
+     * Change vesting start and end timestamps.
      *
-     * Emits a {Transfer} event.
+     * Emits a {VestingStartChanged} event.
      *
      * Requirements:
-     * - `sender` cannot be the zero address.
-     * - `recipient` cannot be the zero address.
-     * - `sender` must have a balance of at least `amount`.
-     * - Contract isn't stopped.
+     * - Caller must have owner role.
+     * - Vesting must be pending.
+     * - `vestingStart_` must be greater than the current timestamp.
      */
-    function _transfer(address sender, address recipient, uint256 amount) internal {
-        require(sender != address(0), 'XFIToken: transfer from the zero address');
-        require(recipient != address(0), 'XFIToken: transfer to the zero address');
-        require(!_stopped, 'XFIToken: transferring is stopped');
+    function changeVestingStart(uint256 vestingStart_) external override returns (bool) {
+        require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), 'XFIToken: sender is not owner');
+        require(_vestingStart > block.timestamp, 'XFIToken: vesting has started');
+        require(vestingStart_ > block.timestamp, 'XFIToken: vesting start must be greater than current timestamp');
 
-        _balances[sender] = _balances[sender].sub(amount, 'XFIToken: transfer amount exceeds balance');
-        _balances[recipient] = _balances[recipient].add(amount);
-        emit Transfer(sender, recipient, amount);
-    }
+        _vestingStart = vestingStart_;
+        _vestingEnd = vestingStart_.add(VESTING_DURATION);
+        _reserveFrozenUntil = vestingStart_.add(RESERVE_FREEZE_DURATION);
 
-    /**
-     * Creates `amount` tokens and assigns them to `account`, increasing
-     * the total supply.
-     *
-     * Emits a {Transfer} event with `from` set to the zero address.
-     *
-     * Requirements:
-     * - `account` cannot be the zero address.
-     */
-    function _mint(address account, uint256 amount) internal {
-        require(account != address(0), 'XFIToken: mint to the zero address');
-        require(!_stopped, 'XFIToken: transferring is stopped');
+        emit VestingStartChanged(vestingStart_, _vestingEnd, _reserveFrozenUntil);
 
-        _totalSupply = _totalSupply.add(amount);
-        _balances[account] = _balances[account].add(amount);
-        emit Transfer(address(0), account, amount);
-    }
-
-    /**
-     * Destroys `amount` tokens from `account`, reducing the
-     * total supply.
-     *
-     * Emits a {Transfer} event with `to` set to the zero address.
-     *
-     * Requirements:
-     * - `account` cannot be the zero address.
-     * - `account` must have at least `amount` tokens.
-     */
-    function _burn(address account, uint256 amount) internal {
-        require(account != address(0), 'XFIToken: burn from the zero address');
-        require(!_stopped, 'XFIToken: transferring is stopped');
-
-        _balances[account] = _balances[account].sub(amount, 'XFIToken: burn amount exceeds balance');
-        _totalSupply = _totalSupply.sub(amount);
-        emit Transfer(account, address(0), amount);
-    }
-
-    /**
-     * Sets `amount` as the allowance of `spender` over the `owner`s tokens.
-     *
-     * Emits an {Approval} event.
-     *
-     * Requirements:
-     * - `owner` cannot be the zero address.
-     * - `spender` cannot be the zero address.
-     */
-    function _approve(address owner, address spender, uint256 amount) internal {
-        require(owner != address(0), 'XFIToken: approve from the zero address');
-        require(spender != address(0), 'XFIToken: approve to the zero address');
-
-        _allowances[owner][spender] = amount;
-        emit Approval(owner, spender, amount);
+        return true;
     }
 
     /**
@@ -313,7 +273,7 @@ contract XFIToken is AccessControl, IXFIToken {
      *
      * Requirements:
      * - Caller must have owner role.
-     * - Contract is stopped.
+     * - Transferring is stopped.
      */
     function startTransfers() external override returns (bool) {
         require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), 'XFIToken: sender is not owner');
@@ -333,7 +293,7 @@ contract XFIToken is AccessControl, IXFIToken {
      *
      * Requirements:
      * - Caller must have owner role.
-     * - Contract isn't stopped.
+     * - Transferring isn't stopped.
      */
     function stopTransfers() external override returns (bool) {
         require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), 'XFIToken: sender is not owner');
@@ -347,9 +307,393 @@ contract XFIToken is AccessControl, IXFIToken {
     }
 
     /**
+     * Start migrations.
+     *
+     * Emits a {MigrationsStarted} event.
+     *
+     * Requirements:
+     * - Caller must have owner role.
+     * - Migrating isn't allowed.
+     */
+    function allowMigrations() external override returns (bool) {
+        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), 'XFIToken: sender is not owner');
+        require(!_migratingAllowed, 'XFIToken: migrating is allowed');
+
+        _migratingAllowed = true;
+
+        emit MigrationsAllowed();
+
+        return true;
+    }
+
+    /**
+     * Withdraws reserve amount to a destination specified as `to`.
+     *
+     * Emits a {ReserveWithdrawal} event.
+     *
+     * Requirements:
+     * - `to` cannot be the zero address.
+     * - Caller must have owner role.
+     * - Reserve has unfrozen.
+     */
+    function withdrawReserve(address to) external override nonReentrant returns (bool) {
+        require(to != address(0), 'XFIToken: withdraw to the zero address');
+        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), 'XFIToken: sender is not owner');
+        require(block.timestamp > _reserveFrozenUntil, 'XFIToken: reserve is frozen');
+
+        uint256 amount = reserveAmount();
+
+        _mintWithoutVesting(to, amount);
+
+        _reserveAmount = 0;
+
+        emit ReserveWithdrawal(to, amount);
+
+        return true;
+    }
+
+    /**
+     * Migrate vesting balance to the Dfinance blockchain.
+     *
+     * Emits a {VestingBalanceMigrated} event.
+     *
+     * Requirements:
+     * - `to` is not the zero bytes.
+     * - Vesting balance is greater than zero.
+     * - Vesting hasn't ended.
+     */
+    function migrateVestingBalance(bytes32 to) external override nonReentrant returns (bool) {
+        require(to != bytes32(0), 'XFIToken: migrate to the zero bytes');
+        require(_migratingAllowed, 'XFIToken: migrating is disallowed');
+        require(block.timestamp < _vestingEnd, 'XFIToken: vesting has ended');
+
+        uint256 vestingBalance = _vestingBalances[msg.sender];
+
+        require(vestingBalance > 0, 'XFIToken: vesting balance is zero');
+
+        uint256 spentVestedBalance = spentVestedBalanceOf(msg.sender);
+        uint256 unspentVestedBalance = unspentVestedBalanceOf(msg.sender);
+
+        // Subtract the vesting balance from total supply.
+        _vestingTotalSupply = _vestingTotalSupply.sub(vestingBalance);
+
+        // Add the unspent vesting balance to total supply.
+        _totalSupply = _totalSupply.add(unspentVestedBalance);
+
+        // Subtract the spent vested balance from total supply.
+        _spentVestedTotalSupply = _spentVestedTotalSupply.sub(spentVestedBalance);
+
+        // Make unspent vested balance persistent.
+        _balances[msg.sender] = _balances[msg.sender].add(unspentVestedBalance);
+
+        // Reset the account's vesting.
+        _vestingBalances[msg.sender] = 0;
+        _spentVestedBalances[msg.sender] = 0;
+
+        emit VestingBalanceMigrated(msg.sender, to, vestingDaysLeft(), vestingBalance);
+
+        return true;
+    }
+
+    /**
+     * Returns name of the token.
+     */
+    function name() external view override returns (string memory) {
+        return _name;
+    }
+
+    /**
+     * Returns symbol of the token.
+     */
+    function symbol() external view override returns (string memory) {
+        return _symbol;
+    }
+
+    /**
+     * Returns number of decimals of the token.
+     */
+    function decimals() external view override returns (uint8) {
+        return _decimals;
+    }
+
+    /**
+     * Returnes amount of `owner`'s tokens that `spender` is allowed to transfer.
+     */
+    function allowance(address owner, address spender) external view override returns (uint256) {
+        return _allowances[owner][spender];
+    }
+
+    /**
+     * Returns the vesting start.
+     */
+    function vestingStart() external view override returns (uint256) {
+        return _vestingStart;
+    }
+
+    /**
+     * Returns the vesting end.
+     */
+    function vestingEnd() external view override returns (uint256) {
+        return _vestingEnd;
+    }
+
+    /**
+     * Returns the date when freeze of the reserve XFI amount.
+     */
+    function reserveFrozenUntil() external view override returns (uint256) {
+        return _reserveFrozenUntil;
+    }
+
+    /**
      * Returns whether transfering is stopped.
      */
     function isTransferringStopped() external view override returns (bool) {
         return _stopped;
+    }
+
+    /**
+     * Returns whether migrating is allowed.
+     */
+    function isMigratingAllowed() external view override returns (bool) {
+        return _migratingAllowed;
+    }
+
+    /**
+     * Convert input amount to the output amount using the vesting ratio
+     * (days since vesting start / vesting duration).
+     */
+    function convertAmountUsingRatio(uint256 amount) public view override returns (uint256) {
+        uint256 convertedAmount = amount
+            .mul(vestingDaysSinceStart())
+            .div(VESTING_DURATION_DAYS);
+
+        return (convertedAmount < amount)
+            ? convertedAmount
+            : amount;
+    }
+
+    /**
+     * Convert input amount to the output amount using the vesting reverse
+     * ratio (days until vesting end / vesting duration).
+     */
+    function convertAmountUsingReverseRatio(uint256 amount) public view override returns (uint256) {
+        if (vestingDaysSinceStart() > 0) {
+            return amount
+                .mul(vestingDaysLeft().add(1))
+                .div(VESTING_DURATION_DAYS);
+        } else {
+            return amount;
+        }
+    }
+
+    /**
+     * Returns days since the vesting start.
+     */
+    function vestingDaysSinceStart() public view override returns (uint256) {
+        if (block.timestamp > _vestingStart) {
+            return block.timestamp
+                .sub(_vestingStart)
+                .div(1 days)
+                .add(1);
+        } else {
+            return 0;
+        }
+    }
+
+    /**
+     * Returns vesting days left.
+     */
+    function vestingDaysLeft() public view override returns (uint256) {
+        if (block.timestamp < _vestingEnd) {
+            return VESTING_DURATION_DAYS
+                .sub(vestingDaysSinceStart());
+        } else {
+            return 0;
+        }
+    }
+
+    /**
+     * Returns total supply of the token.
+     */
+    function totalSupply() public view override returns (uint256) {
+        return convertAmountUsingRatio(_vestingTotalSupply)
+            .add(_totalSupply)
+            .sub(_spentVestedTotalSupply);
+    }
+
+    /**
+     * Returns total vested balance of the `account`.
+     */
+    function totalVestedBalanceOf(address account) public view override returns (uint256) {
+        return convertAmountUsingRatio(_vestingBalances[account]);
+    }
+
+    /**
+     * Returns unspent vested balance of the `account`.
+     */
+    function unspentVestedBalanceOf(address account) public view override returns (uint256) {
+        return totalVestedBalanceOf(account)
+            .sub(_spentVestedBalances[account]);
+    }
+
+    /**
+     * Returns spent vested balance of the `account`.
+     */
+    function spentVestedBalanceOf(address account) public view override returns (uint256) {
+        return _spentVestedBalances[account];
+    }
+
+    /**
+     * Returns token balance of the `account`.
+     */
+    function balanceOf(address account) public view override returns (uint256) {
+        return unspentVestedBalanceOf(account)
+            .add(_balances[account]);
+    }
+
+    /**
+     * Returns reserve amount.
+     */
+    function reserveAmount() public view override returns (uint256) {
+        return _reserveAmount;
+    }
+
+    /**
+     * Moves tokens `amount` from `sender` to `recipient`.
+     *
+     * Emits a {Transfer} event.
+     *
+     * Requirements:
+     * - `sender` cannot be the zero address.
+     * - `recipient` cannot be the zero address.
+     * - `sender` must have a balance of at least `amount`.
+     * - Transferring is not stopped.
+     */
+    function _transfer(address sender, address recipient, uint256 amount) internal {
+        require(sender != address(0), 'XFIToken: transfer from the zero address');
+        require(recipient != address(0), 'XFIToken: transfer to the zero address');
+        require(!_stopped, 'XFIToken: transferring is stopped');
+
+        _decreaseAccountBalance(sender, amount);
+
+        _balances[recipient] = _balances[recipient].add(amount);
+
+        emit Transfer(sender, recipient, amount);
+    }
+
+    /**
+     * Creates `amount` tokens and assigns them to `account`, increasing
+     * the total supply.
+     *
+     * Emits a {Transfer} event with `from` set to the zero address.
+     *
+     * Requirements:
+     * - `account` cannot be the zero address.
+     * - Transferring is not stopped.
+     * - `amount` doesn't exceed reserve amount.
+     */
+    function _mint(address account, uint256 amount) internal {
+        require(account != address(0), 'XFIToken: mint to the zero address');
+        require(!_stopped, 'XFIToken: transferring is stopped');
+        require(_reserveAmount >= amount, 'XFIToken: mint amount exceeds reserve amount');
+
+        _vestingTotalSupply = _vestingTotalSupply.add(amount);
+
+        _vestingBalances[account] = _vestingBalances[account].add(amount);
+
+        _reserveAmount = _reserveAmount.sub(amount);
+
+        emit Transfer(address(0), account, amount);
+    }
+
+    /**
+     * Creates `amount` tokens and assigns them to `account`, increasing
+     * the total supply without vesting.
+     *
+     * Emits a {Transfer} event with `from` set to the zero address.
+     *
+     * Requirements:
+     * - `account` cannot be the zero address.
+     * - Transferring is not stopped.
+     */
+    function _mintWithoutVesting(address account, uint256 amount) internal {
+        require(account != address(0), 'XFIToken: mint to the zero address');
+        require(!_stopped, 'XFIToken: transferring is stopped');
+
+        _totalSupply = _totalSupply.add(amount);
+
+        _balances[account] = _balances[account].add(amount);
+
+        emit Transfer(address(0), account, amount);
+    }
+
+    /**
+     * Destroys `amount` tokens from `account`, reducing the
+     * total supply.
+     *
+     * Emits a {Transfer} event with `to` set to the zero address.
+     *
+     * Requirements:
+     * - `account` cannot be the zero address.
+     * - Transferring is not stopped.
+     * - `account` must have at least `amount` tokens.
+     */
+    function _burn(address account, uint256 amount) internal {
+        require(account != address(0), 'XFIToken: burn from the zero address');
+        require(!_stopped, 'XFIToken: transferring is stopped');
+        require(balanceOf(account) >= amount, 'XFIToken: burn amount exceeds balance');
+
+        _decreaseAccountBalance(account, amount);
+
+        _totalSupply = _totalSupply.sub(amount);
+
+        emit Transfer(account, address(0), amount);
+    }
+
+    /**
+     * Sets `amount` as the allowance of `spender` over the `owner`s tokens.
+     *
+     * Emits an {Approval} event.
+     *
+     * Requirements:
+     * - `owner` cannot be the zero address.
+     * - `spender` cannot be the zero address.
+     */
+    function _approve(address owner, address spender, uint256 amount) internal {
+        require(owner != address(0), 'XFIToken: approve from the zero address');
+        require(spender != address(0), 'XFIToken: approve to the zero address');
+
+        _allowances[owner][spender] = amount;
+
+        emit Approval(owner, spender, amount);
+    }
+
+    /**
+     * Decrease balance of the `account`.
+     *
+     * The use of vested balance is in priority. Otherwise, the normal balance
+     * will be used.
+     */
+    function _decreaseAccountBalance(address account, uint256 amount) internal {
+        uint256 accountBalance = balanceOf(account);
+
+        require(accountBalance >= amount, 'XFIToken: transfer amount exceeds balance');
+
+        uint256 accountVestedBalance = unspentVestedBalanceOf(account);
+        uint256 usedVestedBalance = 0;
+        uint256 usedBalance = 0;
+
+        if (accountVestedBalance >= amount) {
+            usedVestedBalance = amount;
+        } else {
+            usedVestedBalance = accountVestedBalance;
+            usedBalance = amount.sub(usedVestedBalance);
+        }
+
+        _balances[account] = _balances[account].sub(usedBalance);
+        _spentVestedBalances[account] = _spentVestedBalances[account].add(usedVestedBalance);
+
+        _totalSupply = _totalSupply.add(usedVestedBalance);
+        _spentVestedTotalSupply = _spentVestedTotalSupply.add(usedVestedBalance);
     }
 }

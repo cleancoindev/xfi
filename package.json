@@ -7,7 +7,7 @@
     "test": "test"
   },
   "scripts": {
-    "compile": "truffle compile",
+    "compile": "rm -rf build && NODE_PATH=. truffle compile",
     "test": "NODE_PATH=. mocha test/index"
   },
   "author": "",
@@ -23,8 +23,9 @@
     "chai": "^4.2.0",
     "eslint": "^7.4.0",
     "ganache-cli": "6.9.1",
+    "jayson": "^3.3.3",
     "jsdoc": "^3.6.4",
-    "mocha": "^8.0.1",
+    "mocha": "^8.1.1",
     "web3": "1.2.9"
   }
 }
